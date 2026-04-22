@@ -720,60 +720,6 @@ function Decorations() {
 
 /* ─── 紹介モーダル ─── */
 
-function GiiFace({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 96 96" aria-hidden className={className}>
-      <circle cx="48" cy="52" r="34" fill="var(--accent-soft)" />
-      <circle
-        cx="48"
-        cy="52"
-        r="34"
-        fill="none"
-        stroke="var(--accent)"
-        strokeWidth="1.8"
-      />
-      {/* ぎざぎざの前髪 */}
-      <path
-        d="M18 34 L24 22 L30 32 L36 20 L42 32 L48 22 L54 32 L60 20 L66 32 L72 22 L78 34 Q60 30 48 32 Q36 30 18 34 Z"
-        fill="var(--accent)"
-      />
-      {/* 頬の赤み */}
-      <ellipse cx="24" cy="60" rx="5" ry="3.2" fill="var(--accent)" opacity="0.32" />
-      <ellipse cx="72" cy="60" rx="5" ry="3.2" fill="var(--accent)" opacity="0.32" />
-      {/* にやけた細目 */}
-      <path
-        d="M28 48 Q34 44 40 48"
-        stroke="var(--foreground)"
-        strokeWidth="2.2"
-        fill="none"
-        strokeLinecap="round"
-      />
-      <path
-        d="M56 48 Q62 44 68 48"
-        stroke="var(--foreground)"
-        strokeWidth="2.2"
-        fill="none"
-        strokeLinecap="round"
-      />
-      {/* へ の字の口 + 小さな牙 */}
-      <path
-        d="M36 66 Q44 62 52 66 Q56 68 60 65"
-        stroke="var(--foreground)"
-        strokeWidth="1.8"
-        fill="none"
-        strokeLinecap="round"
-      />
-      <path d="M52 66 L53.6 69 L55 66 Z" fill="var(--foreground)" />
-      {/* 装飾の星 */}
-      <path
-        d="M82 18 L83.2 22 L87 23 L83.2 24 L82 28 L80.8 24 L77 23 L80.8 22 Z"
-        fill="var(--accent)"
-        opacity="0.7"
-      />
-    </svg>
-  );
-}
-
 function IntroModal({ onStart }: { onStart: () => void }) {
   useEffect(() => {
     const prev = document.body.style.overflow;
@@ -811,38 +757,26 @@ function IntroModal({ onStart }: { onStart: () => void }) {
           <IconCross className="h-2.5 w-2.5" />
         </button>
 
-        <div className="flex items-center gap-4">
-          <GiiFace className="h-20 w-20 shrink-0 [animation:floaty_3.2s_ease-in-out_infinite]" />
-          <div>
-            <p className="font-mono text-[10px] tracking-[0.3em] text-[color:var(--subtle)]">
-              戯義偽欺着魏
-            </p>
-            <h2
-              id="intro-title"
-              className="mt-1 text-[22px] font-semibold leading-[1.4] text-[color:var(--foreground)] sm:text-[24px]"
-            >
-              クソガキの子守、
-              <br />
-              してみない？
-            </h2>
-          </div>
-        </div>
+        <p className="font-mono text-[10px] tracking-[0.3em] text-[color:var(--subtle)]">
+          戯義偽欺着魏
+        </p>
+        <h2
+          id="intro-title"
+          className="mt-2 text-[24px] font-semibold leading-[1.4] text-[color:var(--foreground)] sm:text-[26px]"
+        >
+          クソガキの子守、
+          <br />
+          してみない？
+        </h2>
 
-        <div className="mt-6 space-y-3 text-[14.5px] leading-[1.85] text-[color:var(--foreground)]">
+        <div className="mt-6 space-y-3 text-[15px] leading-[1.9] text-[color:var(--foreground)]">
           <p>
-            ぎぃちゃんは、りくつっぽい
+            ぎぃちゃんっていう、ちいさい
             <span className="font-semibold text-[color:var(--accent)]">クソガキ</span>
-            だよ。
+            がいる。
           </p>
-          <p>
-            「意識ってほんとにあるの？」「ふつうってなに？」——こたえのない問いをどんどんぶつけてくる。
-          </p>
-          <p>
-            きみの返事からことばのしっぽを拾っては、揚げ足を取ったり、「あっれれ〜？」って首をかしげたり。矛盾を見つけたら、ようしゃなく詰めてくるよ。
-          </p>
-          <p className="text-[color:var(--muted)]">
-            泣きそうになっても、最後までつきあってあげてね。
-          </p>
+          <p>きみに話しかけたがってるよ。</p>
+          <p className="text-[color:var(--muted)]">しばらく、相手してあげて。</p>
         </div>
 
         <button
