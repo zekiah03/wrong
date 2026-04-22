@@ -18,12 +18,22 @@ export const maxDuration = 60;
 
 const THEMES: Theme[] = ["意識", "感情", "身体", "DNA", "メタ"];
 
+function deriveHeadlineFromReply(reply: string): string {
+  const trimmed = reply.trim();
+  if (!trimmed) return "";
+  // 最初の文 (。／？／！／改行 で切る) を見出し候補にする
+  const match = trimmed.match(/^[^。．？！\n]+[。．？！]?/);
+  const first = (match ? match[0] : trimmed).trim();
+  // 長すぎたら 30字で切る
+  return first.length > 30 ? first.slice(0, 28) + "…" : first;
+}
+
 function parseFinal(raw: string): ChatResponse {
   const trimmed = raw.trim();
   const first = trimmed.indexOf("{");
   const last = trimmed.lastIndexOf("}");
   const fallback: ChatResponse = {
-    headline: "",
+    headline: deriveHeadlineFromReply(trimmed) || "—",
     reply: trimmed,
     choices: ["続ける"],
     allowFreeText: false,
@@ -43,9 +53,14 @@ function parseFinal(raw: string): ChatResponse {
       typeof (parsed.retract as { turnIndex?: unknown }).turnIndex === "number"
         ? { turnIndex: (parsed.retract as { turnIndex: number }).turnIndex }
         : undefined;
+    const replyText =
+      typeof parsed.reply === "string" ? parsed.reply : trimmed;
+    const rawHeadline =
+      typeof parsed.headline === "string" ? parsed.headline.trim() : "";
+    const headline = rawHeadline || deriveHeadlineFromReply(replyText) || "—";
     return {
-      headline: typeof parsed.headline === "string" ? parsed.headline : "",
-      reply: typeof parsed.reply === "string" ? parsed.reply : trimmed,
+      headline,
+      reply: replyText,
       choices:
         Array.isArray(parsed.choices) && parsed.choices.length > 0
           ? parsed.choices.map((c) => String(c)).slice(0, 4)

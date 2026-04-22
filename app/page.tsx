@@ -298,7 +298,7 @@ export default function Page() {
           <TurnLabel index={turns.length - 1} theme={current.theme} active />
 
           <h2 className="mt-4 text-[26px] font-semibold leading-[1.55] tracking-[-0.005em] text-[color:var(--foreground)] sm:text-[30px]">
-            {current.headline ?? current.question}
+            {current.headline || current.question}
           </h2>
 
           {current.headline && current.question && current.headline !== current.question ? (
@@ -441,7 +441,7 @@ function PastTurnView({
         ) : null}
       </div>
       <h3 className="mt-2 text-[18px] font-medium leading-[1.6] text-[color:var(--foreground)]/85">
-        {turn.headline ?? turn.question}
+        {turn.headline || turn.question}
       </h3>
       {turn.headline && turn.question && turn.headline !== turn.question ? (
         <details className="group mt-2 text-[14px] leading-[1.85] text-[color:var(--muted)]">
