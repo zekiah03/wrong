@@ -23,6 +23,7 @@ function parseFinal(raw: string): ChatResponse {
   const first = trimmed.indexOf("{");
   const last = trimmed.lastIndexOf("}");
   const fallback: ChatResponse = {
+    headline: "",
     reply: trimmed,
     choices: ["続ける"],
     allowFreeText: false,
@@ -37,6 +38,7 @@ function parseFinal(raw: string): ChatResponse {
         ? (parsed.theme as Theme)
         : "メタ";
     return {
+      headline: typeof parsed.headline === "string" ? parsed.headline : "",
       reply: typeof parsed.reply === "string" ? parsed.reply : trimmed,
       choices:
         Array.isArray(parsed.choices) && parsed.choices.length > 0
@@ -50,10 +52,11 @@ function parseFinal(raw: string): ChatResponse {
   }
 }
 
-// Extract the in-progress content of the "reply" string field from a
-// partial JSON buffer. Returns "" if the reply string hasn't started yet.
-function extractPartialReply(buf: string): string {
-  const m = buf.match(/"reply"\s*:\s*"/);
+// Extract the in-progress content of a string field from a partial JSON
+// buffer. Returns the unescaped value, or "" if the field hasn't started.
+function extractPartialString(buf: string, field: string): string {
+  const re = new RegExp(`"${field}"\\s*:\\s*"`);
+  const m = buf.match(re);
   if (!m || m.index === undefined) return "";
   const start = m.index + m[0].length;
   let out = "";
@@ -156,7 +159,9 @@ export async function POST(req: NextRequest) {
         });
 
         let accumulated = "";
+        let lastHeadlineLen = 0;
         let lastReplyLen = 0;
+        let headlineSent = false;
 
         for await (const event of response) {
           if (
@@ -164,7 +169,26 @@ export async function POST(req: NextRequest) {
             event.delta.type === "text_delta"
           ) {
             accumulated += event.delta.text;
-            const reply = extractPartialReply(accumulated);
+
+            const headline = extractPartialString(accumulated, "headline");
+            if (headline.length > lastHeadlineLen) {
+              send({
+                type: "headline",
+                text: headline.slice(lastHeadlineLen),
+              });
+              lastHeadlineLen = headline.length;
+            }
+            // Mark headline as "sealed" once the closing quote arrives so we
+            // never send a partial headline that gets re-extracted from a
+            // later substring of the buffer.
+            if (
+              !headlineSent &&
+              /\"headline\"\s*:\s*"(?:[^"\\]|\\.)*"/.test(accumulated)
+            ) {
+              headlineSent = true;
+            }
+
+            const reply = extractPartialString(accumulated, "reply");
             if (reply.length > lastReplyLen) {
               send({ type: "reply", text: reply.slice(lastReplyLen) });
               lastReplyLen = reply.length;
@@ -175,6 +199,7 @@ export async function POST(req: NextRequest) {
         const parsed = parseFinal(accumulated);
         send({
           type: "done",
+          headline: parsed.headline,
           reply: parsed.reply,
           choices: parsed.choices,
           allowFreeText: parsed.allowFreeText,

@@ -15,25 +15,30 @@ import {
   saveSession,
 } from "@/lib/storage";
 
-const OPENING_QUESTION = "あなたは今、自分に意識があると思っていますか?";
+const OPENING_HEADLINE = "あなたは今、自分に意識があると思っていますか?";
+const OPENING_BODY =
+  "考えること・感じること、その全てを「意識」と呼ぶなら——それは本当に「ある」のだろうか。立場を一つだけ選んでほしい。";
 const OPENING_CHOICES = [
-  "はい、意識はある",
-  "いいえ、ないかもしれない",
-  "わからない",
+  "意識ははっきりとある",
+  "あるかもしれないが確証はない",
+  "意識などないかもしれない",
 ];
 
 function initialTurn(): Turn {
   return {
-    question: OPENING_QUESTION,
+    headline: OPENING_HEADLINE,
+    question: OPENING_BODY,
     choices: OPENING_CHOICES,
     allowFreeText: false,
   };
 }
 
 type StreamEvent =
+  | { type: "headline"; text: string }
   | { type: "reply"; text: string }
   | {
       type: "done";
+      headline: string;
       reply: string;
       choices: string[];
       allowFreeText: boolean;
@@ -46,7 +51,8 @@ export default function Page() {
   const [history, setHistory] = useState<TurnMessage[]>([]);
   const [turns, setTurns] = useState<Turn[]>([initialTurn()]);
   const [gotchaLog, setGotchaLog] = useState<GotchaEntry[]>([]);
-  const [streamingText, setStreamingText] = useState<string>("");
+  const [streamingHeadline, setStreamingHeadline] = useState("");
+  const [streamingReply, setStreamingReply] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
@@ -79,7 +85,7 @@ export default function Page() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [turns.length, streamingText, loading]);
+  }, [turns.length, streamingReply, streamingHeadline, loading]);
 
   const handleReset = useCallback(() => {
     if (!confirm("この対話を消去します。よろしいですか?")) return;
@@ -88,7 +94,8 @@ export default function Page() {
     setHistory([]);
     setTurns([initialTurn()]);
     setGotchaLog([]);
-    setStreamingText("");
+    setStreamingHeadline("");
+    setStreamingReply("");
     setError(null);
   }, []);
 
@@ -96,14 +103,16 @@ export default function Page() {
     if (loading) return;
     setError(null);
     setLoading(true);
-    setStreamingText("");
+    setStreamingHeadline("");
+    setStreamingReply("");
 
     const currentIdx = turns.length - 1;
-    const currentQuestion = turns[currentIdx].question;
+    const currentHeadline =
+      turns[currentIdx].headline ?? turns[currentIdx].question;
     const entry: GotchaEntry = {
       turnIndex: currentIdx,
       timestamp: Date.now(),
-      question: currentQuestion,
+      question: currentHeadline,
       chosen: choice,
       freeText,
     };
@@ -114,13 +123,12 @@ export default function Page() {
         role: "user",
         content:
           history.length === 0
-            ? `問い: ${currentQuestion}\n選択: ${choice}`
+            ? `問い: ${currentHeadline}\n選択: ${choice}`
             : choice,
       },
     ];
     const nextGotchaLog = [...gotchaLog, entry];
 
-    // Optimistic update
     setTurns((prev) => {
       const copy = [...prev];
       copy[copy.length - 1] = { ...copy[copy.length - 1], chosen: choice };
@@ -158,7 +166,8 @@ export default function Page() {
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
-      let acc = "";
+      let accHeadline = "";
+      let accReply = "";
       let finalEvent:
         | Extract<StreamEvent, { type: "done" }>
         | null = null;
@@ -177,9 +186,12 @@ export default function Page() {
           } catch {
             continue;
           }
-          if (ev.type === "reply") {
-            acc += ev.text;
-            setStreamingText(acc);
+          if (ev.type === "headline") {
+            accHeadline += ev.text;
+            setStreamingHeadline(accHeadline);
+          } else if (ev.type === "reply") {
+            accReply += ev.text;
+            setStreamingReply(accReply);
           } else if (ev.type === "done") {
             finalEvent = ev;
           } else if (ev.type === "error") {
@@ -197,16 +209,19 @@ export default function Page() {
       setTurns((prev) => [
         ...prev,
         {
+          headline: finalEvent.headline,
           question: finalEvent.reply,
           choices: finalEvent.choices,
           allowFreeText: Boolean(finalEvent.allowFreeText),
           theme: finalEvent.theme,
         },
       ]);
-      setStreamingText("");
+      setStreamingHeadline("");
+      setStreamingReply("");
     } catch (e) {
       rollback();
-      setStreamingText("");
+      setStreamingHeadline("");
+      setStreamingReply("");
       setError(e instanceof Error ? e.message : "error");
     } finally {
       setLoading(false);
@@ -217,76 +232,69 @@ export default function Page() {
   const past = turns.slice(0, -1);
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-2xl flex-col px-6 py-12">
+    <main className="mx-auto flex min-h-dvh max-w-2xl flex-col px-5 py-10 sm:px-8 sm:py-14">
       <header className="mb-12 flex items-center justify-between">
-        <h1 className="font-mono text-sm tracking-[0.3em] text-[color:var(--muted)]">
+        <h1 className="font-mono text-xs tracking-[0.32em] text-[color:var(--muted)]">
           戯義偽欺着魏
         </h1>
         <button
           type="button"
           onClick={handleReset}
-          className="font-mono text-[10px] tracking-widest text-[color:var(--muted)] transition hover:text-[color:var(--accent)]"
+          className="rounded-full border border-[color:var(--border)] px-3 py-1 font-mono text-[10px] tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
         >
           RESET
         </button>
       </header>
 
-      <section className="flex flex-1 flex-col gap-10">
+      <section className="flex flex-1 flex-col gap-12">
         {past.map((t, i) => (
-          <div
-            key={i}
-            className="border-l border-[color:var(--border)] pl-4 opacity-60 transition-opacity"
-          >
-            <div className="flex items-center gap-3 text-[10px] uppercase tracking-widest text-[color:var(--muted)]">
-              <span>Q{String(i + 1).padStart(2, "0")}</span>
-              {t.theme ? (
-                <span className="border border-[color:var(--border)] px-2 py-[1px] font-mono text-[9px] tracking-widest">
-                  {t.theme}
-                </span>
-              ) : null}
-            </div>
-            <p className="mt-2 text-sm leading-relaxed whitespace-pre-wrap">
-              {t.question}
-            </p>
-            {t.chosen ? (
-              <p className="mt-3 text-xs text-[color:var(--muted)]">
-                → {t.chosen}
-              </p>
-            ) : null}
-          </div>
+          <PastTurnView key={i} index={i} turn={t} />
         ))}
 
-        <div className="animate-[fadeIn_.4s_ease-out]">
-          <div className="flex items-center gap-3 text-[10px] uppercase tracking-widest text-[color:var(--muted)]">
-            <span>Q{String(turns.length).padStart(2, "0")}</span>
-            {current.theme ? (
-              <span className="border border-[color:var(--accent)] px-2 py-[1px] font-mono text-[9px] tracking-widest text-[color:var(--accent)]">
-                {current.theme}
-              </span>
-            ) : null}
-          </div>
-          <h2 className="mt-3 text-xl font-light leading-relaxed sm:text-2xl whitespace-pre-wrap">
-            {current.question}
+        <article className="animate-[fadeIn_.45s_ease-out]">
+          <TurnLabel index={turns.length - 1} theme={current.theme} active />
+
+          <h2 className="mt-4 text-[26px] font-medium leading-[1.55] tracking-[-0.01em] text-[color:var(--foreground)] sm:text-[30px]">
+            {current.headline ?? current.question}
           </h2>
 
-          {loading && streamingText ? (
-            <div className="mt-6 border-l border-[color:var(--accent)] pl-4 text-base leading-relaxed whitespace-pre-wrap">
-              {streamingText}
-              <span className="ml-[2px] inline-block h-[1em] w-[6px] translate-y-[2px] animate-pulse bg-[color:var(--accent)]" />
+          {current.headline && current.question && current.headline !== current.question ? (
+            <p className="mt-5 text-[16px] leading-[1.85] text-[color:var(--muted)] whitespace-pre-wrap">
+              {current.question}
+            </p>
+          ) : null}
+
+          {loading && (streamingHeadline || streamingReply) ? (
+            <div className="mt-8 border-l-2 border-[color:var(--accent)] pl-5">
+              {streamingHeadline ? (
+                <p className="text-[22px] font-medium leading-[1.55] text-[color:var(--foreground)] sm:text-[26px] whitespace-pre-wrap">
+                  {streamingHeadline}
+                  {!streamingReply ? <Caret /> : null}
+                </p>
+              ) : null}
+              {streamingReply ? (
+                <p className="mt-4 text-[16px] leading-[1.85] text-[color:var(--muted)] whitespace-pre-wrap">
+                  {streamingReply}
+                  <Caret />
+                </p>
+              ) : null}
             </div>
           ) : null}
 
           {!loading ? (
-            <div className="mt-8 flex flex-col gap-3">
+            <div className="mt-9 flex flex-col gap-3">
               {current.choices.map((c, i) => (
                 <button
                   key={`${turns.length}-${i}`}
                   type="button"
                   onClick={() => submit(c)}
                   disabled={loading}
-                  className="border border-[color:var(--border)] px-5 py-4 text-left text-sm transition hover:border-[color:var(--accent)] hover:translate-x-[2px] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="group flex items-center gap-3 rounded-md border border-[color:var(--border)] bg-[color:var(--surface)] px-5 py-4 text-left text-[15px] leading-[1.6] text-[color:var(--foreground)] transition hover:-translate-y-[1px] hover:border-[color:var(--accent)] disabled:cursor-not-allowed disabled:opacity-50 sm:text-[16px]"
                 >
-                  {c}
+                  <span className="font-mono text-[10px] tracking-[0.2em] text-[color:var(--subtle)] group-hover:text-[color:var(--accent)]">
+                    {String.fromCharCode(65 + i)}
+                  </span>
+                  <span className="flex-1">{c}</span>
                 </button>
               ))}
               {current.allowFreeText ? (
@@ -298,28 +306,88 @@ export default function Page() {
             </div>
           ) : null}
 
-          {loading && !streamingText ? (
-            <p className="mt-6 text-xs tracking-widest text-[color:var(--muted)]">
+          {loading && !streamingHeadline && !streamingReply ? (
+            <p className="mt-8 font-mono text-xs tracking-[0.25em] text-[color:var(--muted)]">
               ...考えている
             </p>
           ) : null}
           {error ? (
-            <p className="mt-6 text-xs text-red-500">
+            <p className="mt-8 text-sm text-red-500">
               エラー: {error}
               <span className="ml-2 text-[color:var(--muted)]">
-                (もう一度選択してください)
+                もう一度選択してください
               </span>
             </p>
           ) : null}
-        </div>
+        </article>
         <div ref={bottomRef} />
       </section>
 
-      <footer className="mt-12 flex items-center justify-between text-[10px] tracking-widest text-[color:var(--muted)]">
-        <span>Phase 6 · live</span>
+      <footer className="mt-16 flex items-center justify-between font-mono text-[10px] tracking-[0.25em] text-[color:var(--subtle)]">
+        <span>{turns.length} 問目</span>
         <span>{gotchaLog.length} 件の言質</span>
       </footer>
     </main>
+  );
+}
+
+function TurnLabel({
+  index,
+  theme,
+  active,
+}: {
+  index: number;
+  theme?: Theme;
+  active?: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-3 font-mono text-[10px] tracking-[0.25em] text-[color:var(--muted)]">
+      <span>Q{String(index + 1).padStart(2, "0")}</span>
+      {theme ? (
+        <span
+          className={`rounded-sm border px-2 py-[2px] text-[10px] ${
+            active
+              ? "border-[color:var(--accent)] text-[color:var(--accent)]"
+              : "border-[color:var(--border)] text-[color:var(--muted)]"
+          }`}
+        >
+          {theme}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+function PastTurnView({ index, turn }: { index: number; turn: Turn }) {
+  return (
+    <div className="border-l border-[color:var(--border-strong)] pl-5">
+      <TurnLabel index={index} theme={turn.theme} />
+      <h3 className="mt-2 text-[18px] font-medium leading-[1.6] text-[color:var(--foreground)]/85">
+        {turn.headline ?? turn.question}
+      </h3>
+      {turn.headline && turn.question && turn.headline !== turn.question ? (
+        <details className="mt-2 text-[14px] leading-[1.85] text-[color:var(--muted)]">
+          <summary className="cursor-pointer select-none font-mono text-[10px] tracking-[0.2em] text-[color:var(--subtle)] hover:text-[color:var(--accent)]">
+            ▸ 本文を表示
+          </summary>
+          <p className="mt-2 whitespace-pre-wrap">{turn.question}</p>
+        </details>
+      ) : null}
+      {turn.chosen ? (
+        <p className="mt-3 text-[14px] text-[color:var(--muted)]">
+          <span className="font-mono text-[10px] tracking-[0.2em] text-[color:var(--subtle)]">
+            選択 →{" "}
+          </span>
+          {turn.chosen}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function Caret() {
+  return (
+    <span className="ml-[2px] inline-block h-[1.05em] w-[7px] translate-y-[3px] bg-[color:var(--accent)] [animation:caretBlink_.9s_steps(2)_infinite]" />
   );
 }
 
@@ -348,12 +416,12 @@ function FreeTextInput({
         onChange={(e) => setText(e.target.value)}
         disabled={disabled}
         placeholder="自分の言葉で答える"
-        className="flex-1 border border-[color:var(--border)] bg-transparent px-4 py-3 text-sm outline-none transition focus:border-[color:var(--accent)] disabled:opacity-50"
+        className="flex-1 rounded-md border border-[color:var(--border)] bg-[color:var(--surface)] px-4 py-3 text-[15px] outline-none transition focus:border-[color:var(--accent)] disabled:opacity-50"
       />
       <button
         type="submit"
         disabled={disabled}
-        className="border border-[color:var(--border)] px-4 py-3 text-xs tracking-widest transition hover:border-[color:var(--accent)] disabled:opacity-50"
+        className="rounded-md border border-[color:var(--border)] bg-[color:var(--surface)] px-4 py-3 font-mono text-[11px] tracking-[0.2em] transition hover:border-[color:var(--accent)] disabled:opacity-50"
       >
         SEND
       </button>

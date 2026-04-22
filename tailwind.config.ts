@@ -8,8 +8,25 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["ui-sans-serif", "system-ui", "sans-serif"],
-        mono: ["ui-monospace", "SFMono-Regular", "monospace"],
+        sans: [
+          "ui-sans-serif",
+          "system-ui",
+          "-apple-system",
+          "BlinkMacSystemFont",
+          '"Hiragino Kaku Gothic ProN"',
+          '"Hiragino Sans"',
+          '"Yu Gothic"',
+          '"Noto Sans JP"',
+          "Meiryo",
+          "sans-serif",
+        ],
+        serif: [
+          '"Hiragino Mincho ProN"',
+          '"Yu Mincho"',
+          '"Noto Serif JP"',
+          "serif",
+        ],
+        mono: ["ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
       },
     },
   },

@@ -3,20 +3,26 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #0a0a0a;
-  --muted: #6b7280;
-  --border: #e5e7eb;
-  --accent: #111111;
+  --background: #fafaf9;
+  --surface: #ffffff;
+  --foreground: #0c0a09;
+  --muted: #57534e;
+  --subtle: #a8a29e;
+  --border: #e7e5e4;
+  --border-strong: #d6d3d1;
+  --accent: #0c0a09;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #f5f5f5;
-    --muted: #9ca3af;
-    --border: #262626;
-    --accent: #f5f5f5;
+    --background: #0c0a09;
+    --surface: #1c1917;
+    --foreground: #fafaf9;
+    --muted: #d6d3d1;
+    --subtle: #78716c;
+    --border: #292524;
+    --border-strong: #44403c;
+    --accent: #fafaf9;
   }
 }
 
@@ -24,18 +30,29 @@ html,
 body {
   background: var(--background);
   color: var(--foreground);
-  font-feature-settings: "cv11", "ss01";
+  font-feature-settings: "palt" 1, "pkna" 1;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--background);
 }
 
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+@keyframes caretBlink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
 }

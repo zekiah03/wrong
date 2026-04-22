@@ -13,6 +13,7 @@ export type ChatRequest = {
 export type Theme = "意識" | "感情" | "身体" | "DNA" | "メタ";
 
 export type ChatResponse = {
+  headline: string;
   reply: string;
   choices: string[];
   allowFreeText?: boolean;
@@ -20,6 +21,7 @@ export type ChatResponse = {
 };
 
 export type Turn = {
+  headline?: string;
   question: string;
   choices: string[];
   allowFreeText: boolean;
