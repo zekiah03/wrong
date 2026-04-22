@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { getAnthropic, MODEL_ID } from "@/lib/anthropic";
 import {
   SYSTEM_PROMPT,
@@ -18,7 +18,7 @@ export const maxDuration = 60;
 
 const THEMES: Theme[] = ["意識", "感情", "身体", "DNA", "メタ"];
 
-function parseReply(raw: string): ChatResponse {
+function parseFinal(raw: string): ChatResponse {
   const trimmed = raw.trim();
   const first = trimmed.indexOf("{");
   const last = trimmed.lastIndexOf("}");
@@ -29,9 +29,8 @@ function parseReply(raw: string): ChatResponse {
     theme: "メタ",
   };
   if (first === -1 || last === -1) return fallback;
-  const slice = trimmed.slice(first, last + 1);
   try {
-    const parsed = JSON.parse(slice) as Partial<ChatResponse>;
+    const parsed = JSON.parse(trimmed.slice(first, last + 1)) as Partial<ChatResponse>;
     const theme =
       typeof parsed.theme === "string" &&
       (THEMES as string[]).includes(parsed.theme)
@@ -51,6 +50,49 @@ function parseReply(raw: string): ChatResponse {
   }
 }
 
+// Extract the in-progress content of the "reply" string field from a
+// partial JSON buffer. Returns "" if the reply string hasn't started yet.
+function extractPartialReply(buf: string): string {
+  const m = buf.match(/"reply"\s*:\s*"/);
+  if (!m || m.index === undefined) return "";
+  const start = m.index + m[0].length;
+  let out = "";
+  let i = start;
+  while (i < buf.length) {
+    const ch = buf[i];
+    if (ch === "\\") {
+      const next = buf[i + 1];
+      if (next === undefined) break;
+      switch (next) {
+        case '"': out += '"'; i += 2; break;
+        case "\\": out += "\\"; i += 2; break;
+        case "/": out += "/"; i += 2; break;
+        case "b": out += "\b"; i += 2; break;
+        case "f": out += "\f"; i += 2; break;
+        case "n": out += "\n"; i += 2; break;
+        case "r": out += "\r"; i += 2; break;
+        case "t": out += "\t"; i += 2; break;
+        case "u": {
+          if (i + 6 > buf.length) return out;
+          const hex = buf.slice(i + 2, i + 6);
+          out += String.fromCharCode(parseInt(hex, 16));
+          i += 6;
+          break;
+        }
+        default:
+          out += next;
+          i += 2;
+      }
+    } else if (ch === '"') {
+      break;
+    } else {
+      out += ch;
+      i += 1;
+    }
+  }
+  return out;
+}
+
 function trimMessages(messages: TurnMessage[]): {
   sent: TurnMessage[];
   trimmed: boolean;
@@ -59,7 +101,6 @@ function trimMessages(messages: TurnMessage[]): {
     return { sent: messages, trimmed: false };
   }
   const tail = messages.slice(-KEEP_RECENT);
-  // Ensure the first sent message is a user turn so the API accepts it.
   const firstUser = tail.findIndex((m) => m.role === "user");
   const safeTail = firstUser === -1 ? messages.slice(-1) : tail.slice(firstUser);
   return { sent: safeTail, trimmed: true };
@@ -70,51 +111,89 @@ export async function POST(req: NextRequest) {
   try {
     body = (await req.json()) as ChatRequest;
   } catch {
-    return NextResponse.json({ error: "invalid json" }, { status: 400 });
+    return new Response(JSON.stringify({ error: "invalid json" }), {
+      status: 400,
+      headers: { "content-type": "application/json" },
+    });
   }
 
-  const messages: TurnMessage[] = Array.isArray(body.messages)
-    ? body.messages
-    : [];
+  const messages: TurnMessage[] = Array.isArray(body.messages) ? body.messages : [];
   const gotchaLog = Array.isArray(body.gotchaLog) ? body.gotchaLog : [];
 
   if (messages.length === 0) {
-    return NextResponse.json(
-      { error: "messages required" },
-      { status: 400 },
-    );
+    return new Response(JSON.stringify({ error: "messages required" }), {
+      status: 400,
+      headers: { "content-type": "application/json" },
+    });
   }
 
   const { sent, trimmed } = trimMessages(messages);
 
-  try {
-    const anthropic = getAnthropic();
-    const result = await anthropic.messages.create({
-      model: MODEL_ID,
-      max_tokens: 1024,
-      system: [
-        {
-          type: "text",
-          text: SYSTEM_PROMPT,
-          cache_control: { type: "ephemeral" },
-        },
-        {
-          type: "text",
-          text: buildGotchaContext(gotchaLog, trimmed),
-        },
-      ],
-      messages: sent.map((m) => ({
-        role: m.role,
-        content: m.content,
-      })),
-    });
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const send = (obj: unknown) => {
+        controller.enqueue(encoder.encode(JSON.stringify(obj) + "\n"));
+      };
 
-    const textBlock = result.content.find((b) => b.type === "text");
-    const raw = textBlock && textBlock.type === "text" ? textBlock.text : "";
-    const parsed = parseReply(raw);
-    return NextResponse.json(parsed);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
+      try {
+        const anthropic = getAnthropic();
+        const response = anthropic.messages.stream({
+          model: MODEL_ID,
+          max_tokens: 1024,
+          system: [
+            {
+              type: "text",
+              text: SYSTEM_PROMPT,
+              cache_control: { type: "ephemeral" },
+            },
+            {
+              type: "text",
+              text: buildGotchaContext(gotchaLog, trimmed),
+            },
+          ],
+          messages: sent.map((m) => ({ role: m.role, content: m.content })),
+        });
+
+        let accumulated = "";
+        let lastReplyLen = 0;
+
+        for await (const event of response) {
+          if (
+            event.type === "content_block_delta" &&
+            event.delta.type === "text_delta"
+          ) {
+            accumulated += event.delta.text;
+            const reply = extractPartialReply(accumulated);
+            if (reply.length > lastReplyLen) {
+              send({ type: "reply", text: reply.slice(lastReplyLen) });
+              lastReplyLen = reply.length;
+            }
+          }
+        }
+
+        const parsed = parseFinal(accumulated);
+        send({
+          type: "done",
+          reply: parsed.reply,
+          choices: parsed.choices,
+          allowFreeText: parsed.allowFreeText,
+          theme: parsed.theme,
+        });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "unknown error";
+        send({ type: "error", message });
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "content-type": "application/x-ndjson; charset=utf-8",
+      "cache-control": "no-cache, no-transform",
+      "x-accel-buffering": "no",
+    },
+  });
 }

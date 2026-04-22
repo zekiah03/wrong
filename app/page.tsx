@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type {
-  ChatResponse,
   GotchaEntry,
   StoredSession,
+  Theme,
   Turn,
   TurnMessage,
 } from "@/lib/types";
@@ -30,17 +30,28 @@ function initialTurn(): Turn {
   };
 }
 
+type StreamEvent =
+  | { type: "reply"; text: string }
+  | {
+      type: "done";
+      reply: string;
+      choices: string[];
+      allowFreeText: boolean;
+      theme: Theme;
+    }
+  | { type: "error"; message: string };
+
 export default function Page() {
   const [sessionId, setSessionId] = useState<string>("");
   const [history, setHistory] = useState<TurnMessage[]>([]);
   const [turns, setTurns] = useState<Turn[]>([initialTurn()]);
   const [gotchaLog, setGotchaLog] = useState<GotchaEntry[]>([]);
+  const [streamingText, setStreamingText] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
-  // Hydrate from localStorage on mount
   useEffect(() => {
     const stored = loadSession();
     if (stored) {
@@ -54,7 +65,6 @@ export default function Page() {
     setHydrated(true);
   }, []);
 
-  // Persist on change
   useEffect(() => {
     if (!hydrated || !sessionId) return;
     const session: StoredSession = {
@@ -67,10 +77,9 @@ export default function Page() {
     saveSession(session);
   }, [hydrated, sessionId, history, turns, gotchaLog]);
 
-  // Scroll to bottom on new turn
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [turns.length, loading]);
+  }, [turns.length, streamingText, loading]);
 
   const handleReset = useCallback(() => {
     if (!confirm("この対話を消去します。よろしいですか?")) return;
@@ -79,6 +88,7 @@ export default function Page() {
     setHistory([]);
     setTurns([initialTurn()]);
     setGotchaLog([]);
+    setStreamingText("");
     setError(null);
   }, []);
 
@@ -86,10 +96,10 @@ export default function Page() {
     if (loading) return;
     setError(null);
     setLoading(true);
+    setStreamingText("");
 
     const currentIdx = turns.length - 1;
     const currentQuestion = turns[currentIdx].question;
-
     const entry: GotchaEntry = {
       turnIndex: currentIdx,
       timestamp: Date.now(),
@@ -108,15 +118,27 @@ export default function Page() {
             : choice,
       },
     ];
-
     const nextGotchaLog = [...gotchaLog, entry];
 
+    // Optimistic update
     setTurns((prev) => {
       const copy = [...prev];
       copy[copy.length - 1] = { ...copy[copy.length - 1], chosen: choice };
       return copy;
     });
     setGotchaLog(nextGotchaLog);
+
+    const rollback = () => {
+      setTurns((prev) => {
+        const copy = [...prev];
+        copy[copy.length - 1] = {
+          ...copy[copy.length - 1],
+          chosen: undefined,
+        };
+        return copy;
+      });
+      setGotchaLog(gotchaLog);
+    };
 
     try {
       const res = await fetch("/api/chat", {
@@ -128,27 +150,63 @@ export default function Page() {
         }),
       });
 
-      if (!res.ok) {
+      if (!res.ok || !res.body) {
         const j = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(j.error || `HTTP ${res.status}`);
       }
 
-      const data = (await res.json()) as ChatResponse;
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let acc = "";
+      let finalEvent:
+        | Extract<StreamEvent, { type: "done" }>
+        | null = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          let ev: StreamEvent;
+          try {
+            ev = JSON.parse(line) as StreamEvent;
+          } catch {
+            continue;
+          }
+          if (ev.type === "reply") {
+            acc += ev.text;
+            setStreamingText(acc);
+          } else if (ev.type === "done") {
+            finalEvent = ev;
+          } else if (ev.type === "error") {
+            throw new Error(ev.message);
+          }
+        }
+      }
+
+      if (!finalEvent) throw new Error("不完全な応答");
 
       setHistory([
         ...nextHistory,
-        { role: "assistant", content: data.reply },
+        { role: "assistant", content: finalEvent.reply },
       ]);
       setTurns((prev) => [
         ...prev,
         {
-          question: data.reply,
-          choices: data.choices,
-          allowFreeText: Boolean(data.allowFreeText),
-          theme: data.theme,
+          question: finalEvent.reply,
+          choices: finalEvent.choices,
+          allowFreeText: Boolean(finalEvent.allowFreeText),
+          theme: finalEvent.theme,
         },
       ]);
+      setStreamingText("");
     } catch (e) {
+      rollback();
+      setStreamingText("");
       setError(e instanceof Error ? e.message : "error");
     } finally {
       setLoading(false);
@@ -177,7 +235,7 @@ export default function Page() {
         {past.map((t, i) => (
           <div
             key={i}
-            className="border-l border-[color:var(--border)] pl-4 opacity-60"
+            className="border-l border-[color:var(--border)] pl-4 opacity-60 transition-opacity"
           >
             <div className="flex items-center gap-3 text-[10px] uppercase tracking-widest text-[color:var(--muted)]">
               <span>Q{String(i + 1).padStart(2, "0")}</span>
@@ -187,7 +245,9 @@ export default function Page() {
                 </span>
               ) : null}
             </div>
-            <p className="mt-2 text-sm leading-relaxed">{t.question}</p>
+            <p className="mt-2 text-sm leading-relaxed whitespace-pre-wrap">
+              {t.question}
+            </p>
             {t.chosen ? (
               <p className="mt-3 text-xs text-[color:var(--muted)]">
                 → {t.chosen}
@@ -196,7 +256,7 @@ export default function Page() {
           </div>
         ))}
 
-        <div>
+        <div className="animate-[fadeIn_.4s_ease-out]">
           <div className="flex items-center gap-3 text-[10px] uppercase tracking-widest text-[color:var(--muted)]">
             <span>Q{String(turns.length).padStart(2, "0")}</span>
             {current.theme ? (
@@ -205,41 +265,58 @@ export default function Page() {
               </span>
             ) : null}
           </div>
-          <h2 className="mt-3 text-xl font-light leading-relaxed sm:text-2xl">
+          <h2 className="mt-3 text-xl font-light leading-relaxed sm:text-2xl whitespace-pre-wrap">
             {current.question}
           </h2>
 
-          <div className="mt-8 flex flex-col gap-3">
-            {current.choices.map((c, i) => (
-              <button
-                key={`${turns.length}-${i}`}
-                type="button"
-                onClick={() => submit(c)}
-                disabled={loading}
-                className="border border-[color:var(--border)] px-5 py-4 text-left text-sm transition hover:border-[color:var(--accent)] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {c}
-              </button>
-            ))}
-            {current.allowFreeText ? (
-              <FreeTextInput disabled={loading} onSubmit={(t) => submit(t, true)} />
-            ) : null}
-          </div>
+          {loading && streamingText ? (
+            <div className="mt-6 border-l border-[color:var(--accent)] pl-4 text-base leading-relaxed whitespace-pre-wrap">
+              {streamingText}
+              <span className="ml-[2px] inline-block h-[1em] w-[6px] translate-y-[2px] animate-pulse bg-[color:var(--accent)]" />
+            </div>
+          ) : null}
 
-          {loading ? (
+          {!loading ? (
+            <div className="mt-8 flex flex-col gap-3">
+              {current.choices.map((c, i) => (
+                <button
+                  key={`${turns.length}-${i}`}
+                  type="button"
+                  onClick={() => submit(c)}
+                  disabled={loading}
+                  className="border border-[color:var(--border)] px-5 py-4 text-left text-sm transition hover:border-[color:var(--accent)] hover:translate-x-[2px] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {c}
+                </button>
+              ))}
+              {current.allowFreeText ? (
+                <FreeTextInput
+                  disabled={loading}
+                  onSubmit={(t) => submit(t, true)}
+                />
+              ) : null}
+            </div>
+          ) : null}
+
+          {loading && !streamingText ? (
             <p className="mt-6 text-xs tracking-widest text-[color:var(--muted)]">
               ...考えている
             </p>
           ) : null}
           {error ? (
-            <p className="mt-6 text-xs text-red-500">エラー: {error}</p>
+            <p className="mt-6 text-xs text-red-500">
+              エラー: {error}
+              <span className="ml-2 text-[color:var(--muted)]">
+                (もう一度選択してください)
+              </span>
+            </p>
           ) : null}
         </div>
         <div ref={bottomRef} />
       </section>
 
       <footer className="mt-12 flex items-center justify-between text-[10px] tracking-widest text-[color:var(--muted)]">
-        <span>Phase 5 · branching</span>
+        <span>Phase 6 · live</span>
         <span>{gotchaLog.length} 件の言質</span>
       </footer>
     </main>
