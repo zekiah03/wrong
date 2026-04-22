@@ -16,13 +16,14 @@ import {
   saveSession,
 } from "@/lib/storage";
 
-const OPENING_HEADLINE = "きみって、“意識”あると思う？";
+const OPENING_HEADLINE = "やっほー！ぼく、ぎぃちゃん。";
 const OPENING_BODY =
-  "考えたり、感じたり——ぜんぶひっくるめて「意識」って呼ぶなら、それってほんとに“ある”のかな。立場をひとつだけ選んでみて。";
+  "はじめましてだね。ぼくはぎぃちゃん。きみとおしゃべりしながら、こたえのない問いをいっしょに考えるあそびをするよ。\nまずはゆる〜く、じぶんのことから教えて。\n\nきみ、いまどんな気分？";
 const OPENING_CHOICES = [
-  "ぜったいある、はっきりある",
-  "あるかもだけど証明はむずい",
-  "たぶん、無いんじゃないかな",
+  "まあまあ元気かな",
+  "なんか、もやもやしてる",
+  "ふつう。とくになんにも",
+  "じぶんでもよくわかんない",
 ];
 
 function initialTurn(): Turn {
@@ -247,15 +248,22 @@ export default function Page() {
   return (
     <main className="relative mx-auto flex min-h-dvh max-w-2xl flex-col px-5 py-10 sm:px-8 sm:py-14">
       <Decorations />
-      <header className="relative z-10 mb-12 flex items-center justify-between">
-        <h1 className="flex items-center gap-2 text-xs tracking-[0.32em] text-[color:var(--muted)]">
+      <header className="relative z-10 mb-12 flex items-start justify-between gap-4">
+        <div className="flex items-center gap-2.5">
           <LogoMark />
-          <span className="font-mono">戯義偽欺着魏</span>
-        </h1>
+          <div className="flex flex-col">
+            <span className="font-mono text-xs tracking-[0.32em] text-[color:var(--muted)]">
+              戯義偽欺着魏
+            </span>
+            <span className="mt-0.5 text-[11px] tracking-[0.05em] text-[color:var(--subtle)]">
+              ぎぃちゃんと、おしゃべり。
+            </span>
+          </div>
+        </div>
         <button
           type="button"
           onClick={handleReset}
-          className="group flex items-center gap-1.5 rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] px-3 py-1 font-mono text-[10px] tracking-[0.2em] text-[color:var(--muted)] transition hover:-translate-y-[1px] hover:border-[color:var(--accent)] hover:text-[color:var(--accent)] hover:shadow-soft active:scale-95"
+          className="group mt-1 flex shrink-0 items-center gap-1.5 rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] px-3 py-1 font-mono text-[10px] tracking-[0.2em] text-[color:var(--muted)] transition hover:-translate-y-[1px] hover:border-[color:var(--accent)] hover:text-[color:var(--accent)] hover:shadow-soft active:scale-95"
         >
           <IconRefresh className="h-3 w-3 transition group-hover:rotate-[-90deg]" />
           RESET
