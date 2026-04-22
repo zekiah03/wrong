@@ -109,18 +109,23 @@ export default function Page() {
       },
     ];
 
+    const nextGotchaLog = [...gotchaLog, entry];
+
     setTurns((prev) => {
       const copy = [...prev];
       copy[copy.length - 1] = { ...copy[copy.length - 1], chosen: choice };
       return copy;
     });
-    setGotchaLog((prev) => [...prev, entry]);
+    setGotchaLog(nextGotchaLog);
 
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ messages: nextHistory }),
+        body: JSON.stringify({
+          messages: nextHistory,
+          gotchaLog: nextGotchaLog,
+        }),
       });
 
       if (!res.ok) {
@@ -222,8 +227,9 @@ export default function Page() {
         <div ref={bottomRef} />
       </section>
 
-      <footer className="mt-12 text-[10px] tracking-widest text-[color:var(--muted)]">
-        Phase 3 · persisted
+      <footer className="mt-12 flex items-center justify-between text-[10px] tracking-widest text-[color:var(--muted)]">
+        <span>Phase 4 · active</span>
+        <span>{gotchaLog.length} 件の言質</span>
       </footer>
     </main>
   );

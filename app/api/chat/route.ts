@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAnthropic, MODEL_ID } from "@/lib/anthropic";
-import { SYSTEM_PROMPT } from "@/lib/prompt";
+import { SYSTEM_PROMPT, buildGotchaContext } from "@/lib/prompt";
 import type { ChatRequest, ChatResponse, TurnMessage } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -40,6 +40,7 @@ export async function POST(req: NextRequest) {
   const messages: TurnMessage[] = Array.isArray(body.messages)
     ? body.messages
     : [];
+  const gotchaLog = Array.isArray(body.gotchaLog) ? body.gotchaLog : [];
 
   if (messages.length === 0) {
     return NextResponse.json(
@@ -53,7 +54,17 @@ export async function POST(req: NextRequest) {
     const result = await anthropic.messages.create({
       model: MODEL_ID,
       max_tokens: 1024,
-      system: SYSTEM_PROMPT,
+      system: [
+        {
+          type: "text",
+          text: SYSTEM_PROMPT,
+          cache_control: { type: "ephemeral" },
+        },
+        {
+          type: "text",
+          text: buildGotchaContext(gotchaLog),
+        },
+      ],
       messages: messages.map((m) => ({
         role: m.role,
         content: m.content,

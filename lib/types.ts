@@ -7,6 +7,7 @@ export type TurnMessage = {
 
 export type ChatRequest = {
   messages: TurnMessage[];
+  gotchaLog?: GotchaEntry[];
 };
 
 export type ChatResponse = {
