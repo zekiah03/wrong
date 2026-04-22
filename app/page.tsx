@@ -77,7 +77,7 @@ export default function Page() {
   useEffect(() => {
     if (!hydrated || !sessionId) return;
     const session: StoredSession = {
-      version: 1,
+      version: 2,
       sessionId,
       messages: history,
       turns,

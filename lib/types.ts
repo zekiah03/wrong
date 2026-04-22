@@ -40,7 +40,7 @@ export type GotchaEntry = {
 };
 
 export type StoredSession = {
-  version: 1;
+  version: 2;
   sessionId: string;
   messages: TurnMessage[];
   turns: Turn[];
