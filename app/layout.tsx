@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 const title = "戯義偽欺着魏";
-const description = "答えのない問いに、答える。";
+const description = "こたえのない問いに、こたえてみよう。";
 
 export const metadata: Metadata = {
   title,

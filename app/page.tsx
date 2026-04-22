@@ -15,13 +15,13 @@ import {
   saveSession,
 } from "@/lib/storage";
 
-const OPENING_HEADLINE = "あなたは今、自分に意識があると思っていますか?";
+const OPENING_HEADLINE = "きみって、“意識”あると思う？";
 const OPENING_BODY =
-  "考えること・感じること、その全てを「意識」と呼ぶなら——それは本当に「ある」のだろうか。立場を一つだけ選んでほしい。";
+  "考えたり、感じたり——ぜんぶひっくるめて「意識」って呼ぶなら、それってほんとに“ある”のかな。立場をひとつだけ選んでみて。";
 const OPENING_CHOICES = [
-  "意識ははっきりとある",
-  "あるかもしれないが確証はない",
-  "意識などないかもしれない",
+  "ぜったいある、はっきりある",
+  "あるかもだけど証明はむずい",
+  "たぶん、無いんじゃないかな",
 ];
 
 function initialTurn(): Turn {
@@ -89,7 +89,7 @@ export default function Page() {
   }, [turns.length, streamingReply, streamingHeadline, loading]);
 
   const handleReset = useCallback(() => {
-    if (!confirm("この対話を消去します。よろしいですか?")) return;
+    if (!confirm("このおしゃべり、ぜんぶ消しちゃう？")) return;
     clearSession();
     setSessionId(newSessionId());
     setHistory([]);
@@ -201,7 +201,7 @@ export default function Page() {
         }
       }
 
-      if (!finalEvent) throw new Error("不完全な応答");
+      if (!finalEvent) throw new Error("とちゅうで返事がとぎれたよ");
 
       setHistory([
         ...nextHistory,
@@ -325,14 +325,14 @@ export default function Page() {
 
           {loading && !streamingHeadline && !streamingReply ? (
             <p className="mt-8 font-mono text-xs tracking-[0.25em] text-[color:var(--muted)]">
-              ...考えている
+              ...かんがえちゅう
             </p>
           ) : null}
           {error ? (
             <p className="mt-8 text-sm text-red-500">
-              エラー: {error}
+              あれ、うまくいかなかった: {error}
               <span className="ml-2 text-[color:var(--muted)]">
-                もう一度選択してください
+                もういっかいえらんでみて
               </span>
             </p>
           ) : null}
@@ -341,8 +341,8 @@ export default function Page() {
       </section>
 
       <footer className="mt-16 flex items-center justify-between font-mono text-[10px] tracking-[0.25em] text-[color:var(--subtle)]">
-        <span>{turns.length} 問目</span>
-        <span>{gotchaLog.length} 件の言質</span>
+        <span>{turns.length} もんめ</span>
+        <span>{gotchaLog.length} こ言質ゲット</span>
       </footer>
     </main>
   );
@@ -390,7 +390,7 @@ function PastTurnView({
         <TurnLabel index={index} theme={turn.theme} />
         {retracted ? (
           <span className="rounded-sm border border-[color:var(--border-strong)] px-2 py-[2px] font-mono text-[10px] tracking-[0.2em] text-[color:var(--subtle)]">
-            撤回済
+            とり消し
           </span>
         ) : null}
       </div>
@@ -400,7 +400,7 @@ function PastTurnView({
       {turn.headline && turn.question && turn.headline !== turn.question ? (
         <details className="mt-2 text-[14px] leading-[1.85] text-[color:var(--muted)]">
           <summary className="cursor-pointer select-none font-mono text-[10px] tracking-[0.2em] text-[color:var(--subtle)] hover:text-[color:var(--accent)]">
-            ▸ 本文を表示
+            ▸ ぜんぶ見る
           </summary>
           <p className="mt-2 whitespace-pre-wrap">{turn.question}</p>
         </details>
@@ -414,7 +414,7 @@ function PastTurnView({
           }`}
         >
           <span className="font-mono text-[10px] tracking-[0.2em] text-[color:var(--subtle)]">
-            選択 →{" "}
+            えらんだ →{" "}
           </span>
           {turn.chosen}
         </p>
@@ -453,7 +453,7 @@ function FreeTextInput({
         value={text}
         onChange={(e) => setText(e.target.value)}
         disabled={disabled}
-        placeholder="自分の言葉で答える"
+        placeholder="じぶんの言葉で答える"
         className="flex-1 rounded-md border border-[color:var(--border)] bg-[color:var(--surface)] px-4 py-3 text-[15px] outline-none transition focus:border-[color:var(--accent)] disabled:opacity-50"
       />
       <button
