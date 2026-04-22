@@ -316,25 +316,58 @@ export type GotchaLogItem = {
   retracted?: boolean;
 };
 
+export const GOTCHA_KEEP_RECENT = 30;
+
+function formatEntry(e: GotchaLogItem): string {
+  const kind = e.freeText ? "自由記述" : "選択";
+  const tag = e.retracted ? " [とり消し済]" : "";
+  return `- T${e.turnIndex + 1} [${kind}]${tag} 問: 「${e.question}」 → 答: 「${e.chosen}」`;
+}
+
 export function buildGotchaContext(
   log: GotchaLogItem[],
   trimmed: boolean,
 ): string {
-  const head =
-    log.length === 0
-      ? "## 言質ログ\n(まだなにも言ってない。さいしょの一言をとってやろう。)"
-      : [
-          "## 言質ログ(きみの過去の発言。武器につかっていい)",
-          ...log.map((e) => {
-            const kind = e.freeText ? "自由記述" : "選択";
-            const tag = e.retracted ? " [とり消し済]" : "";
-            return `- T${e.turnIndex + 1} [${kind}]${tag} 問: 「${e.question}」 → 答: 「${e.chosen}」`;
-          }),
-          "",
-          "これは本人の言葉。矛盾やふくみを引き出すのに使う。一字もかえない。",
-          "[とり消し済] はもう矛盾のネタに使わない。ただし『人はとり消す。でも残るのは何？』って新しい問いにはつかっていい。",
-        ].join("\n");
+  if (log.length === 0) {
+    return "## 言質ログ\n(まだなにも言ってない。さいしょの一言をとってやろう。)";
+  }
 
+  const over = log.length - GOTCHA_KEEP_RECENT;
+  const older = over > 0 ? log.slice(0, over) : [];
+  const recent = over > 0 ? log.slice(over) : log;
+  const keptRetracted = older.filter((e) => e.retracted);
+
+  const lines: string[] = [
+    "## 言質ログ(きみの過去の発言。武器につかっていい)",
+  ];
+
+  if (older.length > 0) {
+    const freeTextCount = older.filter((e) => e.freeText).length;
+    lines.push(
+      `- T1〜T${over} は要約のみ: ${older.length}件の言質(うち自由記述${freeTextCount}件)を積んだ。直接引用が必要なら recent の範囲でやる。`,
+    );
+    if (keptRetracted.length > 0) {
+      lines.push(
+        ...keptRetracted.map(
+          (e) => `  - 要注意(とり消し済・攻めには使わない): T${e.turnIndex + 1}`,
+        ),
+      );
+    }
+  }
+
+  lines.push(...recent.map(formatEntry));
+  lines.push("");
+  lines.push("これは本人の言葉。矛盾やふくみを引き出すのに使う。一字もかえない。");
+  lines.push(
+    "[とり消し済] はもう矛盾のネタに使わない。ただし『人はとり消す。でも残るのは何？』って新しい問いにはつかっていい。",
+  );
+  if (over > 0) {
+    lines.push(
+      `要約に畳んだ T1〜T${over} の発言は原文引用しない。原文引用は直近 ${GOTCHA_KEEP_RECENT} 件の範囲で。`,
+    );
+  }
+
+  const head = lines.join("\n");
   if (!trimmed) return head;
   return [
     head,
