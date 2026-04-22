@@ -17,8 +17,7 @@ import {
 } from "@/lib/storage";
 
 const OPENING_HEADLINE = "やっほー！ぼく、ぎぃちゃん。";
-const OPENING_BODY =
-  "はじめましてだね。ぼくはぎぃちゃん。きみとおしゃべりしながら、こたえのない問いをいっしょに考えるあそびをするよ。\nまずはゆる〜く、じぶんのことから教えて。\n\nきみ、いまどんな気分？";
+const OPENING_BODY = "ねぇ、いまどんな気分？";
 const OPENING_CHOICES = [
   "まあまあ元気かな",
   "なんか、もやもやしてる",
