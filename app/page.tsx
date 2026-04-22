@@ -389,7 +389,7 @@ function TurnLabel({
         }`}
       >
         <IconBubble className="h-2.5 w-2.5" />
-        Q{String(index + 1).padStart(2, "0")}
+        {index === 0 ? "はじめまして" : `Q${String(index).padStart(2, "0")}`}
       </span>
       {theme ? (
         <span
