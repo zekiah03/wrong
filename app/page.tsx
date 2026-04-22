@@ -244,8 +244,8 @@ export default function Page() {
     }
   }
 
-  const current = turns[turns.length - 1];
-  const past = turns.slice(0, -1);
+  const current = loading ? null : turns[turns.length - 1];
+  const past = loading ? turns : turns.slice(0, -1);
 
   return (
     <main className="relative mx-auto flex min-h-dvh max-w-2xl flex-col px-5 py-10 sm:px-8 sm:py-14">
@@ -294,6 +294,7 @@ export default function Page() {
           );
         })}
 
+        {current ? (
         <article className="rounded-squish border border-[color:var(--border)] bg-[color:var(--surface)]/70 p-6 shadow-soft backdrop-blur-sm [animation:popIn_.55s_cubic-bezier(.2,.9,.3,1.2)] sm:p-8">
           <TurnLabel index={turns.length - 1} theme={current.theme} active />
 
@@ -307,58 +308,33 @@ export default function Page() {
             </p>
           ) : null}
 
-          {loading && (streamingHeadline || streamingReply) ? (
-            <div className="mt-8 rounded-squish bg-[color:var(--accent-soft)]/60 p-5 ring-1 ring-[color:var(--accent)]/30">
-              {streamingHeadline ? (
-                <p className="text-[22px] font-semibold leading-[1.55] text-[color:var(--foreground)] sm:text-[26px] whitespace-pre-wrap">
-                  {streamingHeadline}
-                  {!streamingReply ? <Caret /> : null}
-                </p>
-              ) : null}
-              {streamingReply ? (
-                <p className="mt-4 text-[16px] leading-[1.85] text-[color:var(--muted)] whitespace-pre-wrap">
-                  {streamingReply}
-                  <Caret />
-                </p>
-              ) : null}
-            </div>
-          ) : null}
+          <div className="mt-9 flex flex-col gap-3">
+            {current.choices.map((c, i) => (
+              <button
+                key={`${turns.length}-${i}`}
+                type="button"
+                onClick={() => submit(c)}
+                disabled={loading}
+                style={{
+                  animation: `popIn .5s cubic-bezier(.2,.9,.3,1.2) ${0.08 * i + 0.1}s both`,
+                }}
+                className="group flex items-center gap-3 rounded-squish border border-[color:var(--border)] bg-[color:var(--surface)] px-5 py-4 text-left text-[15px] leading-[1.6] text-[color:var(--foreground)] shadow-soft transition hover:-translate-y-[2px] hover:border-[color:var(--accent)] hover:shadow-[0_12px_26px_-12px_rgba(255,122,182,0.55)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:text-[16px]"
+              >
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[color:var(--accent-soft)] font-mono text-[11px] tracking-[0.05em] text-[color:var(--accent)] transition group-hover:scale-110 group-hover:bg-[color:var(--accent)] group-hover:text-[color:var(--accent-ink)]">
+                  {String.fromCharCode(65 + i)}
+                </span>
+                <span className="flex-1">{c}</span>
+                <IconArrowRight className="h-3.5 w-3.5 shrink-0 text-[color:var(--subtle)] transition group-hover:translate-x-1 group-hover:text-[color:var(--accent)]" />
+              </button>
+            ))}
+            {current.allowFreeText ? (
+              <FreeTextInput
+                disabled={loading}
+                onSubmit={(t) => submit(t, true)}
+              />
+            ) : null}
+          </div>
 
-          {!loading ? (
-            <div className="mt-9 flex flex-col gap-3">
-              {current.choices.map((c, i) => (
-                <button
-                  key={`${turns.length}-${i}`}
-                  type="button"
-                  onClick={() => submit(c)}
-                  disabled={loading}
-                  style={{
-                    animation: `popIn .5s cubic-bezier(.2,.9,.3,1.2) ${0.08 * i + 0.1}s both`,
-                  }}
-                  className="group flex items-center gap-3 rounded-squish border border-[color:var(--border)] bg-[color:var(--surface)] px-5 py-4 text-left text-[15px] leading-[1.6] text-[color:var(--foreground)] shadow-soft transition hover:-translate-y-[2px] hover:border-[color:var(--accent)] hover:shadow-[0_12px_26px_-12px_rgba(255,122,182,0.55)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:text-[16px]"
-                >
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[color:var(--accent-soft)] font-mono text-[11px] tracking-[0.05em] text-[color:var(--accent)] transition group-hover:scale-110 group-hover:bg-[color:var(--accent)] group-hover:text-[color:var(--accent-ink)]">
-                    {String.fromCharCode(65 + i)}
-                  </span>
-                  <span className="flex-1">{c}</span>
-                  <IconArrowRight className="h-3.5 w-3.5 shrink-0 text-[color:var(--subtle)] transition group-hover:translate-x-1 group-hover:text-[color:var(--accent)]" />
-                </button>
-              ))}
-              {current.allowFreeText ? (
-                <FreeTextInput
-                  disabled={loading}
-                  onSubmit={(t) => submit(t, true)}
-                />
-              ) : null}
-            </div>
-          ) : null}
-
-          {loading && !streamingHeadline && !streamingReply ? (
-            <p className="mt-8 inline-flex items-center gap-2 font-mono text-xs tracking-[0.25em] text-[color:var(--muted)]">
-              <BouncingDots />
-              かんがえちゅう
-            </p>
-          ) : null}
           {error ? (
             <div className="mt-8 rounded-squish border border-red-300/60 bg-red-50/70 px-4 py-3 text-sm text-red-500 dark:border-red-400/30 dark:bg-red-500/10">
               <p className="font-medium">あれ、うまくいかなかった</p>
@@ -367,6 +343,35 @@ export default function Page() {
             </div>
           ) : null}
         </article>
+        ) : null}
+
+        {loading ? (
+          <article
+            key="pending"
+            className="rounded-squish border border-[color:var(--accent)]/40 bg-[color:var(--surface)]/80 p-6 shadow-soft backdrop-blur-sm [animation:popIn_.55s_cubic-bezier(.2,.9,.3,1.2)] sm:p-8"
+          >
+            <TurnLabel index={turns.length} active />
+
+            {streamingHeadline ? (
+              <h2 className="mt-4 text-[26px] font-semibold leading-[1.55] tracking-[-0.005em] text-[color:var(--foreground)] sm:text-[30px] whitespace-pre-wrap">
+                {streamingHeadline}
+                {!streamingReply ? <Caret /> : null}
+              </h2>
+            ) : (
+              <div className="mt-4 inline-flex items-center gap-2 font-mono text-xs tracking-[0.25em] text-[color:var(--muted)]">
+                <BouncingDots />
+                かんがえちゅう
+              </div>
+            )}
+
+            {streamingReply ? (
+              <p className="mt-5 text-[16px] leading-[1.85] text-[color:var(--muted)] whitespace-pre-wrap">
+                {streamingReply}
+                <Caret />
+              </p>
+            ) : null}
+          </article>
+        ) : null}
         <div ref={bottomRef} />
       </section>
 
