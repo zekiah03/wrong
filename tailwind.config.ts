@@ -9,15 +9,16 @@ const config: Config = {
     extend: {
       fontFamily: {
         sans: [
+          '"Hiragino Maru Gothic ProN"',
+          '"Hiragino Maru Gothic Pro"',
+          '"Yu Gothic Medium"',
+          '"YuGothic"',
+          '"Rounded Mplus 1c"',
+          '"M PLUS Rounded 1c"',
+          '"Hiragino Kaku Gothic ProN"',
+          "Meiryo",
           "ui-sans-serif",
           "system-ui",
-          "-apple-system",
-          "BlinkMacSystemFont",
-          '"Hiragino Kaku Gothic ProN"',
-          '"Hiragino Sans"',
-          '"Yu Gothic"',
-          '"Noto Sans JP"',
-          "Meiryo",
           "sans-serif",
         ],
         serif: [
@@ -27,6 +28,12 @@ const config: Config = {
           "serif",
         ],
         mono: ["ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
+      },
+      boxShadow: {
+        soft: "var(--shadow-soft)",
+      },
+      borderRadius: {
+        squish: "22px",
       },
     },
   },
