@@ -126,7 +126,7 @@ export default function Page() {
         role: "user",
         content:
           history.length === 0
-            ? `問い: ${currentHeadline}\n選択: ${choice}`
+            ? `(ぎぃちゃんの開幕あいさつ: ${currentHeadline})\nユーザーの返事: ${choice}`
             : choice,
       },
     ];
