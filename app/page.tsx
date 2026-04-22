@@ -59,6 +59,7 @@ export default function Page() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  const [showIntro, setShowIntro] = useState(false);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -70,6 +71,7 @@ export default function Page() {
       setGotchaLog(stored.gotchaLog ?? []);
     } else {
       setSessionId(newSessionId());
+      setShowIntro(true);
     }
     setHydrated(true);
   }, []);
@@ -100,6 +102,7 @@ export default function Page() {
     setStreamingHeadline("");
     setStreamingReply("");
     setError(null);
+    setShowIntro(true);
   }, []);
 
   async function submit(choice: string, freeText = false) {
@@ -256,19 +259,31 @@ export default function Page() {
               戯義偽欺着魏
             </span>
             <span className="mt-0.5 text-[11px] tracking-[0.05em] text-[color:var(--subtle)]">
-              ぎぃちゃんと、おしゃべり。
+              クソガキの子守、してみない？
             </span>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={handleReset}
-          className="group mt-1 flex shrink-0 items-center gap-1.5 rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] px-3 py-1 font-mono text-[10px] tracking-[0.2em] text-[color:var(--muted)] transition hover:-translate-y-[1px] hover:border-[color:var(--accent)] hover:text-[color:var(--accent)] hover:shadow-soft active:scale-95"
-        >
-          <IconRefresh className="h-3 w-3 transition group-hover:rotate-[-90deg]" />
-          RESET
-        </button>
+        <div className="mt-1 flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowIntro(true)}
+            aria-label="ぎぃちゃんって何？"
+            className="group flex h-7 w-7 items-center justify-center rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] font-mono text-[11px] tracking-[0.1em] text-[color:var(--muted)] transition hover:-translate-y-[1px] hover:border-[color:var(--accent)] hover:text-[color:var(--accent)] hover:shadow-soft active:scale-95"
+          >
+            <IconInfo className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={handleReset}
+            className="group flex items-center gap-1.5 rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] px-3 py-1 font-mono text-[10px] tracking-[0.2em] text-[color:var(--muted)] transition hover:-translate-y-[1px] hover:border-[color:var(--accent)] hover:text-[color:var(--accent)] hover:shadow-soft active:scale-95"
+          >
+            <IconRefresh className="h-3 w-3 transition group-hover:rotate-[-90deg]" />
+            RESET
+          </button>
+        </div>
       </header>
+
+      {showIntro ? <IntroModal onStart={() => setShowIntro(false)} /> : null}
 
       <section className="relative z-10 flex flex-1 flex-col gap-12">
         {past.map((t, i) => {
@@ -617,6 +632,28 @@ function IconRefresh({ className }: { className?: string }) {
   );
 }
 
+function IconInfo({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 16 16" aria-hidden className={className}>
+      <circle
+        cx="8"
+        cy="8"
+        r="6.5"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        fill="none"
+      />
+      <circle cx="8" cy="5" r="0.9" fill="currentColor" />
+      <path
+        d="M8 7.5 L8 11.5"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 function IconCross({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 10 10" aria-hidden className={className}>
@@ -677,6 +714,150 @@ function Decorations() {
       ))}
       <div className="absolute inset-x-0 top-0 h-40 bg-[radial-gradient(ellipse_at_top,_var(--accent-soft)_0%,_transparent_70%)] opacity-40" />
       <div className="absolute inset-x-0 bottom-0 h-48 bg-[radial-gradient(ellipse_at_bottom,_var(--accent-soft)_0%,_transparent_70%)] opacity-30" />
+    </div>
+  );
+}
+
+/* ─── 紹介モーダル ─── */
+
+function GiiFace({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 96 96" aria-hidden className={className}>
+      <circle cx="48" cy="52" r="34" fill="var(--accent-soft)" />
+      <circle
+        cx="48"
+        cy="52"
+        r="34"
+        fill="none"
+        stroke="var(--accent)"
+        strokeWidth="1.8"
+      />
+      {/* ぎざぎざの前髪 */}
+      <path
+        d="M18 34 L24 22 L30 32 L36 20 L42 32 L48 22 L54 32 L60 20 L66 32 L72 22 L78 34 Q60 30 48 32 Q36 30 18 34 Z"
+        fill="var(--accent)"
+      />
+      {/* 頬の赤み */}
+      <ellipse cx="24" cy="60" rx="5" ry="3.2" fill="var(--accent)" opacity="0.32" />
+      <ellipse cx="72" cy="60" rx="5" ry="3.2" fill="var(--accent)" opacity="0.32" />
+      {/* にやけた細目 */}
+      <path
+        d="M28 48 Q34 44 40 48"
+        stroke="var(--foreground)"
+        strokeWidth="2.2"
+        fill="none"
+        strokeLinecap="round"
+      />
+      <path
+        d="M56 48 Q62 44 68 48"
+        stroke="var(--foreground)"
+        strokeWidth="2.2"
+        fill="none"
+        strokeLinecap="round"
+      />
+      {/* へ の字の口 + 小さな牙 */}
+      <path
+        d="M36 66 Q44 62 52 66 Q56 68 60 65"
+        stroke="var(--foreground)"
+        strokeWidth="1.8"
+        fill="none"
+        strokeLinecap="round"
+      />
+      <path d="M52 66 L53.6 69 L55 66 Z" fill="var(--foreground)" />
+      {/* 装飾の星 */}
+      <path
+        d="M82 18 L83.2 22 L87 23 L83.2 24 L82 28 L80.8 24 L77 23 L80.8 22 Z"
+        fill="var(--accent)"
+        opacity="0.7"
+      />
+    </svg>
+  );
+}
+
+function IntroModal({ onStart }: { onStart: () => void }) {
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onStart();
+    };
+    window.addEventListener("keydown", onEsc);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onEsc);
+    };
+  }, [onStart]);
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="intro-title"
+      className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6 [animation:fadeIn_.25s_ease-out]"
+    >
+      <button
+        type="button"
+        aria-label="とじる"
+        onClick={onStart}
+        className="absolute inset-0 bg-[color:var(--background)]/75 backdrop-blur-sm"
+      />
+      <div className="relative z-10 w-full max-w-md rounded-squish border border-[color:var(--border)] bg-[color:var(--surface)] p-6 shadow-[0_24px_60px_-24px_rgba(255,122,182,0.55)] [animation:popIn_.45s_cubic-bezier(.2,.9,.3,1.2)] sm:p-8">
+        <button
+          type="button"
+          onClick={onStart}
+          aria-label="とじる"
+          className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--muted)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)] active:scale-90"
+        >
+          <IconCross className="h-2.5 w-2.5" />
+        </button>
+
+        <div className="flex items-center gap-4">
+          <GiiFace className="h-20 w-20 shrink-0 [animation:floaty_3.2s_ease-in-out_infinite]" />
+          <div>
+            <p className="font-mono text-[10px] tracking-[0.3em] text-[color:var(--subtle)]">
+              戯義偽欺着魏
+            </p>
+            <h2
+              id="intro-title"
+              className="mt-1 text-[22px] font-semibold leading-[1.4] text-[color:var(--foreground)] sm:text-[24px]"
+            >
+              クソガキの子守、
+              <br />
+              してみない？
+            </h2>
+          </div>
+        </div>
+
+        <div className="mt-6 space-y-3 text-[14.5px] leading-[1.85] text-[color:var(--foreground)]">
+          <p>
+            ぎぃちゃんは、りくつっぽい
+            <span className="font-semibold text-[color:var(--accent)]">クソガキ</span>
+            だよ。
+          </p>
+          <p>
+            「意識ってほんとにあるの？」「ふつうってなに？」——こたえのない問いをどんどんぶつけてくる。
+          </p>
+          <p>
+            きみの返事からことばのしっぽを拾っては、揚げ足を取ったり、「あっれれ〜？」って首をかしげたり。矛盾を見つけたら、ようしゃなく詰めてくるよ。
+          </p>
+          <p className="text-[color:var(--muted)]">
+            泣きそうになっても、最後までつきあってあげてね。
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={onStart}
+          className="group mt-7 flex w-full items-center justify-center gap-2 rounded-squish border border-[color:var(--accent)] bg-[color:var(--accent)] px-5 py-3.5 text-[15px] font-semibold text-[color:var(--accent-ink)] shadow-soft transition hover:-translate-y-[1px] hover:shadow-[0_14px_28px_-12px_rgba(255,122,182,0.7)] active:scale-[0.98]"
+        >
+          子守、はじめる
+          <IconArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+        </button>
+
+        <p className="mt-3 text-center font-mono text-[10px] tracking-[0.2em] text-[color:var(--subtle)]">
+          esc / 背景クリックでも閉じる
+        </p>
+      </div>
     </div>
   );
 }
