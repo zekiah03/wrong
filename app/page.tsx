@@ -255,9 +255,9 @@ export default function Page() {
         <button
           type="button"
           onClick={handleReset}
-          className="flex items-center gap-1.5 rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] px-3 py-1 font-mono text-[10px] tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
+          className="group flex items-center gap-1.5 rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] px-3 py-1 font-mono text-[10px] tracking-[0.2em] text-[color:var(--muted)] transition hover:-translate-y-[1px] hover:border-[color:var(--accent)] hover:text-[color:var(--accent)] hover:shadow-soft active:scale-95"
         >
-          <IconRefresh className="h-3 w-3" />
+          <IconRefresh className="h-3 w-3 transition group-hover:rotate-[-90deg]" />
           RESET
         </button>
       </header>
@@ -272,10 +272,10 @@ export default function Page() {
           );
         })}
 
-        <article className="animate-[fadeIn_.45s_ease-out]">
+        <article className="rounded-squish border border-[color:var(--border)] bg-[color:var(--surface)]/70 p-6 shadow-soft backdrop-blur-sm [animation:popIn_.55s_cubic-bezier(.2,.9,.3,1.2)] sm:p-8">
           <TurnLabel index={turns.length - 1} theme={current.theme} active />
 
-          <h2 className="mt-4 text-[26px] font-medium leading-[1.55] tracking-[-0.01em] text-[color:var(--foreground)] sm:text-[30px]">
+          <h2 className="mt-4 text-[26px] font-semibold leading-[1.55] tracking-[-0.005em] text-[color:var(--foreground)] sm:text-[30px]">
             {current.headline ?? current.question}
           </h2>
 
@@ -286,9 +286,9 @@ export default function Page() {
           ) : null}
 
           {loading && (streamingHeadline || streamingReply) ? (
-            <div className="mt-8 border-l-2 border-[color:var(--accent)] pl-5">
+            <div className="mt-8 rounded-squish bg-[color:var(--accent-soft)]/60 p-5 ring-1 ring-[color:var(--accent)]/30">
               {streamingHeadline ? (
-                <p className="text-[22px] font-medium leading-[1.55] text-[color:var(--foreground)] sm:text-[26px] whitespace-pre-wrap">
+                <p className="text-[22px] font-semibold leading-[1.55] text-[color:var(--foreground)] sm:text-[26px] whitespace-pre-wrap">
                   {streamingHeadline}
                   {!streamingReply ? <Caret /> : null}
                 </p>
@@ -310,13 +310,16 @@ export default function Page() {
                   type="button"
                   onClick={() => submit(c)}
                   disabled={loading}
-                  className="group flex items-center gap-3 rounded-squish border border-[color:var(--border)] bg-[color:var(--surface)] px-5 py-4 text-left text-[15px] leading-[1.6] text-[color:var(--foreground)] shadow-soft transition hover:-translate-y-[2px] hover:border-[color:var(--accent)] hover:shadow-[0_10px_24px_-12px_rgba(255,122,182,0.5)] disabled:cursor-not-allowed disabled:opacity-50 sm:text-[16px]"
+                  style={{
+                    animation: `popIn .5s cubic-bezier(.2,.9,.3,1.2) ${0.08 * i + 0.1}s both`,
+                  }}
+                  className="group flex items-center gap-3 rounded-squish border border-[color:var(--border)] bg-[color:var(--surface)] px-5 py-4 text-left text-[15px] leading-[1.6] text-[color:var(--foreground)] shadow-soft transition hover:-translate-y-[2px] hover:border-[color:var(--accent)] hover:shadow-[0_12px_26px_-12px_rgba(255,122,182,0.55)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:text-[16px]"
                 >
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[color:var(--accent-soft)] font-mono text-[10px] tracking-[0.1em] text-[color:var(--accent)] transition group-hover:bg-[color:var(--accent)] group-hover:text-[color:var(--accent-ink)]">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[color:var(--accent-soft)] font-mono text-[11px] tracking-[0.05em] text-[color:var(--accent)] transition group-hover:scale-110 group-hover:bg-[color:var(--accent)] group-hover:text-[color:var(--accent-ink)]">
                     {String.fromCharCode(65 + i)}
                   </span>
                   <span className="flex-1">{c}</span>
-                  <IconArrowRight className="h-3.5 w-3.5 shrink-0 text-[color:var(--subtle)] transition group-hover:translate-x-0.5 group-hover:text-[color:var(--accent)]" />
+                  <IconArrowRight className="h-3.5 w-3.5 shrink-0 text-[color:var(--subtle)] transition group-hover:translate-x-1 group-hover:text-[color:var(--accent)]" />
                 </button>
               ))}
               {current.allowFreeText ? (
@@ -335,12 +338,11 @@ export default function Page() {
             </p>
           ) : null}
           {error ? (
-            <p className="mt-8 text-sm text-red-500">
-              あれ、うまくいかなかった: {error}
-              <span className="ml-2 text-[color:var(--muted)]">
-                もういっかいえらんでみて
-              </span>
-            </p>
+            <div className="mt-8 rounded-squish border border-red-300/60 bg-red-50/70 px-4 py-3 text-sm text-red-500 dark:border-red-400/30 dark:bg-red-500/10">
+              <p className="font-medium">あれ、うまくいかなかった</p>
+              <p className="mt-1 text-xs opacity-80">{error}</p>
+              <p className="mt-2 text-xs text-[color:var(--muted)]">もういっかいえらんでみて</p>
+            </div>
           ) : null}
         </article>
         <div ref={bottomRef} />
@@ -449,7 +451,7 @@ function PastTurnView({
 
 function Caret() {
   return (
-    <span className="ml-[2px] inline-block h-[1.05em] w-[7px] translate-y-[3px] bg-[color:var(--accent)] [animation:caretBlink_.9s_steps(2)_infinite]" />
+    <span className="ml-[3px] inline-block h-[1em] w-[8px] translate-y-[2px] rounded-full bg-[color:var(--accent)] [animation:caretBlink_.9s_steps(2)_infinite]" />
   );
 }
 
@@ -484,9 +486,9 @@ function FreeTextInput({
         type="submit"
         disabled={disabled}
         aria-label="おくる"
-        className="inline-flex items-center gap-1.5 rounded-squish border border-[color:var(--border)] bg-[color:var(--surface)] px-4 py-3 font-mono text-[11px] tracking-[0.2em] transition hover:-translate-y-[1px] hover:border-[color:var(--accent)] hover:text-[color:var(--accent)] hover:shadow-soft disabled:opacity-50"
+        className="group inline-flex items-center gap-1.5 rounded-squish border border-[color:var(--border)] bg-[color:var(--surface)] px-4 py-3 font-mono text-[11px] tracking-[0.2em] transition hover:-translate-y-[1px] hover:border-[color:var(--accent)] hover:text-[color:var(--accent)] hover:shadow-soft active:scale-95 disabled:opacity-50"
       >
-        <IconPaperPlane className="h-3.5 w-3.5" />
+        <IconPaperPlane className="h-3.5 w-3.5 transition group-hover:[animation:takeoff_.35s_ease-out_forwards]" />
         おくる
       </button>
     </form>
