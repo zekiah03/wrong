@@ -43,6 +43,7 @@ type StreamEvent =
       choices: string[];
       allowFreeText: boolean;
       theme: Theme;
+      retract?: { turnIndex: number };
     }
   | { type: "error"; message: string };
 
@@ -216,6 +217,17 @@ export default function Page() {
           theme: finalEvent.theme,
         },
       ]);
+      if (
+        finalEvent.retract &&
+        Number.isInteger(finalEvent.retract.turnIndex)
+      ) {
+        const target = finalEvent.retract.turnIndex;
+        setGotchaLog((prev) =>
+          prev.map((g) =>
+            g.turnIndex === target ? { ...g, retracted: true } : g,
+          ),
+        );
+      }
       setStreamingHeadline("");
       setStreamingReply("");
     } catch (e) {
@@ -247,9 +259,14 @@ export default function Page() {
       </header>
 
       <section className="flex flex-1 flex-col gap-12">
-        {past.map((t, i) => (
-          <PastTurnView key={i} index={i} turn={t} />
-        ))}
+        {past.map((t, i) => {
+          const retracted = gotchaLog.some(
+            (g) => g.turnIndex === i && g.retracted,
+          );
+          return (
+            <PastTurnView key={i} index={i} turn={t} retracted={retracted} />
+          );
+        })}
 
         <article className="animate-[fadeIn_.45s_ease-out]">
           <TurnLabel index={turns.length - 1} theme={current.theme} active />
@@ -358,10 +375,25 @@ function TurnLabel({
   );
 }
 
-function PastTurnView({ index, turn }: { index: number; turn: Turn }) {
+function PastTurnView({
+  index,
+  turn,
+  retracted,
+}: {
+  index: number;
+  turn: Turn;
+  retracted: boolean;
+}) {
   return (
     <div className="border-l border-[color:var(--border-strong)] pl-5">
-      <TurnLabel index={index} theme={turn.theme} />
+      <div className="flex items-center gap-3">
+        <TurnLabel index={index} theme={turn.theme} />
+        {retracted ? (
+          <span className="rounded-sm border border-[color:var(--border-strong)] px-2 py-[2px] font-mono text-[10px] tracking-[0.2em] text-[color:var(--subtle)]">
+            撤回済
+          </span>
+        ) : null}
+      </div>
       <h3 className="mt-2 text-[18px] font-medium leading-[1.6] text-[color:var(--foreground)]/85">
         {turn.headline ?? turn.question}
       </h3>
@@ -374,7 +406,13 @@ function PastTurnView({ index, turn }: { index: number; turn: Turn }) {
         </details>
       ) : null}
       {turn.chosen ? (
-        <p className="mt-3 text-[14px] text-[color:var(--muted)]">
+        <p
+          className={`mt-3 text-[14px] ${
+            retracted
+              ? "text-[color:var(--subtle)] line-through"
+              : "text-[color:var(--muted)]"
+          }`}
+        >
           <span className="font-mono text-[10px] tracking-[0.2em] text-[color:var(--subtle)]">
             選択 →{" "}
           </span>

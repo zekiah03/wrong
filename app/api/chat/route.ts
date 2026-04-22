@@ -37,6 +37,12 @@ function parseFinal(raw: string): ChatResponse {
       (THEMES as string[]).includes(parsed.theme)
         ? (parsed.theme as Theme)
         : "メタ";
+    const retract =
+      parsed.retract &&
+      typeof parsed.retract === "object" &&
+      typeof (parsed.retract as { turnIndex?: unknown }).turnIndex === "number"
+        ? { turnIndex: (parsed.retract as { turnIndex: number }).turnIndex }
+        : undefined;
     return {
       headline: typeof parsed.headline === "string" ? parsed.headline : "",
       reply: typeof parsed.reply === "string" ? parsed.reply : trimmed,
@@ -46,6 +52,7 @@ function parseFinal(raw: string): ChatResponse {
           : ["続ける"],
       allowFreeText: Boolean(parsed.allowFreeText),
       theme,
+      retract,
     };
   } catch {
     return fallback;
@@ -204,6 +211,7 @@ export async function POST(req: NextRequest) {
           choices: parsed.choices,
           allowFreeText: parsed.allowFreeText,
           theme: parsed.theme,
+          retract: parsed.retract,
         });
       } catch (err) {
         const message = err instanceof Error ? err.message : "unknown error";

@@ -18,6 +18,7 @@ export type ChatResponse = {
   choices: string[];
   allowFreeText?: boolean;
   theme?: Theme;
+  retract?: { turnIndex: number };
 };
 
 export type Turn = {
@@ -35,6 +36,7 @@ export type GotchaEntry = {
   question: string;
   chosen: string;
   freeText: boolean;
+  retracted?: boolean;
 };
 
 export type StoredSession = {
