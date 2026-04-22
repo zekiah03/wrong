@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties, FC } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   GotchaEntry,
@@ -244,21 +245,24 @@ export default function Page() {
   const past = turns.slice(0, -1);
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-2xl flex-col px-5 py-10 sm:px-8 sm:py-14">
-      <header className="mb-12 flex items-center justify-between">
-        <h1 className="font-mono text-xs tracking-[0.32em] text-[color:var(--muted)]">
-          戯義偽欺着魏
+    <main className="relative mx-auto flex min-h-dvh max-w-2xl flex-col px-5 py-10 sm:px-8 sm:py-14">
+      <Decorations />
+      <header className="relative z-10 mb-12 flex items-center justify-between">
+        <h1 className="flex items-center gap-2 text-xs tracking-[0.32em] text-[color:var(--muted)]">
+          <LogoMark />
+          <span className="font-mono">戯義偽欺着魏</span>
         </h1>
         <button
           type="button"
           onClick={handleReset}
-          className="rounded-full border border-[color:var(--border)] px-3 py-1 font-mono text-[10px] tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
+          className="flex items-center gap-1.5 rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] px-3 py-1 font-mono text-[10px] tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
         >
+          <IconRefresh className="h-3 w-3" />
           RESET
         </button>
       </header>
 
-      <section className="flex flex-1 flex-col gap-12">
+      <section className="relative z-10 flex flex-1 flex-col gap-12">
         {past.map((t, i) => {
           const retracted = gotchaLog.some(
             (g) => g.turnIndex === i && g.retracted,
@@ -306,12 +310,13 @@ export default function Page() {
                   type="button"
                   onClick={() => submit(c)}
                   disabled={loading}
-                  className="group flex items-center gap-3 rounded-md border border-[color:var(--border)] bg-[color:var(--surface)] px-5 py-4 text-left text-[15px] leading-[1.6] text-[color:var(--foreground)] transition hover:-translate-y-[1px] hover:border-[color:var(--accent)] disabled:cursor-not-allowed disabled:opacity-50 sm:text-[16px]"
+                  className="group flex items-center gap-3 rounded-squish border border-[color:var(--border)] bg-[color:var(--surface)] px-5 py-4 text-left text-[15px] leading-[1.6] text-[color:var(--foreground)] shadow-soft transition hover:-translate-y-[2px] hover:border-[color:var(--accent)] hover:shadow-[0_10px_24px_-12px_rgba(255,122,182,0.5)] disabled:cursor-not-allowed disabled:opacity-50 sm:text-[16px]"
                 >
-                  <span className="font-mono text-[10px] tracking-[0.2em] text-[color:var(--subtle)] group-hover:text-[color:var(--accent)]">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[color:var(--accent-soft)] font-mono text-[10px] tracking-[0.1em] text-[color:var(--accent)] transition group-hover:bg-[color:var(--accent)] group-hover:text-[color:var(--accent-ink)]">
                     {String.fromCharCode(65 + i)}
                   </span>
                   <span className="flex-1">{c}</span>
+                  <IconArrowRight className="h-3.5 w-3.5 shrink-0 text-[color:var(--subtle)] transition group-hover:translate-x-0.5 group-hover:text-[color:var(--accent)]" />
                 </button>
               ))}
               {current.allowFreeText ? (
@@ -324,8 +329,9 @@ export default function Page() {
           ) : null}
 
           {loading && !streamingHeadline && !streamingReply ? (
-            <p className="mt-8 font-mono text-xs tracking-[0.25em] text-[color:var(--muted)]">
-              ...かんがえちゅう
+            <p className="mt-8 inline-flex items-center gap-2 font-mono text-xs tracking-[0.25em] text-[color:var(--muted)]">
+              <BouncingDots />
+              かんがえちゅう
             </p>
           ) : null}
           {error ? (
@@ -340,9 +346,15 @@ export default function Page() {
         <div ref={bottomRef} />
       </section>
 
-      <footer className="mt-16 flex items-center justify-between font-mono text-[10px] tracking-[0.25em] text-[color:var(--subtle)]">
-        <span>{turns.length} もんめ</span>
-        <span>{gotchaLog.length} こ言質ゲット</span>
+      <footer className="relative z-10 mt-16 flex items-center justify-between font-mono text-[10px] tracking-[0.25em] text-[color:var(--subtle)]">
+        <span className="inline-flex items-center gap-1.5">
+          <IconStar className="h-3 w-3 text-[color:var(--accent)]" />
+          {turns.length} もんめ
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <IconHeart className="h-3 w-3 text-[color:var(--accent)]" />
+          {gotchaLog.length} こ言質ゲット
+        </span>
       </footer>
     </main>
   );
@@ -358,11 +370,20 @@ function TurnLabel({
   active?: boolean;
 }) {
   return (
-    <div className="flex items-center gap-3 font-mono text-[10px] tracking-[0.25em] text-[color:var(--muted)]">
-      <span>Q{String(index + 1).padStart(2, "0")}</span>
+    <div className="flex items-center gap-2 font-mono text-[10px] tracking-[0.25em] text-[color:var(--muted)]">
+      <span
+        className={`inline-flex items-center gap-1 rounded-full px-2 py-[3px] ${
+          active
+            ? "bg-[color:var(--accent)] text-[color:var(--accent-ink)]"
+            : "bg-[color:var(--accent-soft)] text-[color:var(--accent)]"
+        }`}
+      >
+        <IconBubble className="h-2.5 w-2.5" />
+        Q{String(index + 1).padStart(2, "0")}
+      </span>
       {theme ? (
         <span
-          className={`rounded-sm border px-2 py-[2px] text-[10px] ${
+          className={`rounded-full border px-2 py-[2px] text-[10px] ${
             active
               ? "border-[color:var(--accent)] text-[color:var(--accent)]"
               : "border-[color:var(--border)] text-[color:var(--muted)]"
@@ -385,11 +406,12 @@ function PastTurnView({
   retracted: boolean;
 }) {
   return (
-    <div className="border-l border-[color:var(--border-strong)] pl-5">
+    <div className="relative rounded-squish border border-dashed border-[color:var(--border-strong)] bg-[color:var(--surface)]/40 pl-5 pr-4 py-4">
       <div className="flex items-center gap-3">
         <TurnLabel index={index} theme={turn.theme} />
         {retracted ? (
-          <span className="rounded-sm border border-[color:var(--border-strong)] px-2 py-[2px] font-mono text-[10px] tracking-[0.2em] text-[color:var(--subtle)]">
+          <span className="inline-flex items-center gap-1 rounded-full border border-[color:var(--border-strong)] px-2 py-[2px] font-mono text-[10px] tracking-[0.2em] text-[color:var(--subtle)]">
+            <IconCross className="h-2.5 w-2.5" />
             とり消し
           </span>
         ) : null}
@@ -398,23 +420,25 @@ function PastTurnView({
         {turn.headline ?? turn.question}
       </h3>
       {turn.headline && turn.question && turn.headline !== turn.question ? (
-        <details className="mt-2 text-[14px] leading-[1.85] text-[color:var(--muted)]">
-          <summary className="cursor-pointer select-none font-mono text-[10px] tracking-[0.2em] text-[color:var(--subtle)] hover:text-[color:var(--accent)]">
-            ▸ ぜんぶ見る
+        <details className="group mt-2 text-[14px] leading-[1.85] text-[color:var(--muted)]">
+          <summary className="inline-flex cursor-pointer select-none items-center gap-1 font-mono text-[10px] tracking-[0.2em] text-[color:var(--subtle)] hover:text-[color:var(--accent)] [&::-webkit-details-marker]:hidden">
+            <IconChevron className="h-3 w-3 transition group-open:rotate-90" />
+            ぜんぶ見る
           </summary>
           <p className="mt-2 whitespace-pre-wrap">{turn.question}</p>
         </details>
       ) : null}
       {turn.chosen ? (
         <p
-          className={`mt-3 text-[14px] ${
+          className={`mt-3 inline-flex items-center gap-1.5 text-[14px] ${
             retracted
               ? "text-[color:var(--subtle)] line-through"
               : "text-[color:var(--muted)]"
           }`}
         >
-          <span className="font-mono text-[10px] tracking-[0.2em] text-[color:var(--subtle)]">
-            えらんだ →{" "}
+          <span className="inline-flex items-center gap-1 font-mono text-[10px] tracking-[0.2em] text-[color:var(--subtle)]">
+            えらんだ
+            <IconArrowRight className="h-3 w-3" />
           </span>
           {turn.chosen}
         </p>
@@ -454,15 +478,195 @@ function FreeTextInput({
         onChange={(e) => setText(e.target.value)}
         disabled={disabled}
         placeholder="じぶんの言葉で答える"
-        className="flex-1 rounded-md border border-[color:var(--border)] bg-[color:var(--surface)] px-4 py-3 text-[15px] outline-none transition focus:border-[color:var(--accent)] disabled:opacity-50"
+        className="flex-1 rounded-squish border border-[color:var(--border)] bg-[color:var(--surface)] px-4 py-3 text-[15px] outline-none transition focus:border-[color:var(--accent)] focus:shadow-soft disabled:opacity-50"
       />
       <button
         type="submit"
         disabled={disabled}
-        className="rounded-md border border-[color:var(--border)] bg-[color:var(--surface)] px-4 py-3 font-mono text-[11px] tracking-[0.2em] transition hover:border-[color:var(--accent)] disabled:opacity-50"
+        aria-label="おくる"
+        className="inline-flex items-center gap-1.5 rounded-squish border border-[color:var(--border)] bg-[color:var(--surface)] px-4 py-3 font-mono text-[11px] tracking-[0.2em] transition hover:-translate-y-[1px] hover:border-[color:var(--accent)] hover:text-[color:var(--accent)] hover:shadow-soft disabled:opacity-50"
       >
-        SEND
+        <IconPaperPlane className="h-3.5 w-3.5" />
+        おくる
       </button>
     </form>
+  );
+}
+
+/* ─── SVGアイコン・装飾 ─── */
+
+function LogoMark() {
+  return (
+    <svg
+      viewBox="0 0 32 32"
+      aria-hidden
+      className="h-7 w-7 shrink-0 [animation:floaty_4s_ease-in-out_infinite]"
+    >
+      <circle cx="10" cy="22" r="5" fill="var(--accent-soft)" />
+      <circle cx="21" cy="12" r="6" fill="var(--accent)" />
+      <circle cx="21" cy="12" r="2" fill="var(--accent-ink)" opacity="0.9" />
+      <path
+        d="M26 20 L27 23.5 L30.5 24.5 L27 25.5 L26 29 L25 25.5 L21.5 24.5 L25 23.5 Z"
+        fill="var(--accent)"
+        opacity="0.85"
+      />
+    </svg>
+  );
+}
+
+type IconProps = { className?: string; style?: CSSProperties };
+
+function IconStar({ className, style }: IconProps) {
+  return (
+    <svg viewBox="0 0 20 20" aria-hidden className={className} style={style}>
+      <path
+        d="M10 1.5 L11.6 8.4 L18.5 10 L11.6 11.6 L10 18.5 L8.4 11.6 L1.5 10 L8.4 8.4 Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+function IconHeart({ className, style }: IconProps) {
+  return (
+    <svg viewBox="0 0 20 20" aria-hidden className={className} style={style}>
+      <path
+        d="M10 17.2 C10 17.2 2 11.6 2 6.9 C2 4.2 4 2.2 6.5 2.2 C8.2 2.2 9.4 3.1 10 4.2 C10.6 3.1 11.8 2.2 13.5 2.2 C16 2.2 18 4.2 18 6.9 C18 11.6 10 17.2 10 17.2 Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+function IconBubble({ className, style }: IconProps) {
+  return (
+    <svg viewBox="0 0 20 20" aria-hidden className={className} style={style}>
+      <circle cx="10" cy="10" r="7.5" fill="currentColor" />
+      <circle cx="7" cy="7" r="2.2" fill="var(--surface)" opacity="0.75" />
+    </svg>
+  );
+}
+
+function IconChevron({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 12 12" aria-hidden className={className}>
+      <path
+        d="M4 2 L8 6 L4 10"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+    </svg>
+  );
+}
+
+function IconArrowRight({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 16 16" aria-hidden className={className}>
+      <path
+        d="M2.5 8 H13.5 M9 3.5 L13.5 8 L9 12.5"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+    </svg>
+  );
+}
+
+function IconPaperPlane({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 18 18" aria-hidden className={className}>
+      <path d="M16.2 1.8 L1 8.6 L6.8 10.6 L9.1 16.2 L16.2 1.8 Z" fill="currentColor" />
+      <path
+        d="M6.8 10.6 L16.2 1.8"
+        stroke="var(--surface)"
+        strokeWidth="0.9"
+        strokeLinecap="round"
+        fill="none"
+      />
+    </svg>
+  );
+}
+
+function IconRefresh({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 16 16" aria-hidden className={className}>
+      <path
+        d="M13 8 A5 5 0 1 1 11.5 4.5 M13.5 2 L13.5 5 L10.5 5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+    </svg>
+  );
+}
+
+function IconCross({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 10 10" aria-hidden className={className}>
+      <path
+        d="M2 2 L8 8 M8 2 L2 8"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function BouncingDots() {
+  return (
+    <span className="inline-flex items-end gap-[3px]">
+      {[0, 1, 2].map((i) => (
+        <span
+          key={i}
+          className="inline-block h-[6px] w-[6px] rounded-full bg-[color:var(--accent)] [animation:floaty_1s_ease-in-out_infinite]"
+          style={{ animationDelay: `${i * 0.14}s` }}
+        />
+      ))}
+    </span>
+  );
+}
+
+/**
+ * 背景にふわっと浮くSVG装飾。pointer-events-noneなのでクリックは素通り。
+ */
+function Decorations() {
+  const items: Array<{
+    Cmp: FC<{ className?: string; style?: CSSProperties }>;
+    cls: string;
+    delay: string;
+    dur: string;
+  }> = [
+    { Cmp: IconStar, cls: "top-[6%] left-[4%] h-4 w-4", delay: "0s", dur: "3.8s" },
+    { Cmp: IconHeart, cls: "top-[18%] right-[5%] h-3 w-3", delay: "-1s", dur: "4.2s" },
+    { Cmp: IconBubble, cls: "top-[42%] left-[2%] h-3 w-3", delay: "-1.6s", dur: "5s" },
+    { Cmp: IconBubble, cls: "bottom-[22%] right-[4%] h-5 w-5", delay: "-0.5s", dur: "4.6s" },
+    { Cmp: IconStar, cls: "bottom-[8%] left-[8%] h-3 w-3", delay: "-2.1s", dur: "3.4s" },
+    { Cmp: IconHeart, cls: "bottom-[14%] right-[14%] h-2.5 w-2.5", delay: "-0.8s", dur: "4s" },
+  ];
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
+    >
+      {items.map(({ Cmp, cls, delay, dur }, i) => (
+        <Cmp
+          key={i}
+          className={`absolute text-[color:var(--accent-soft)] ${cls}`}
+          style={{
+            animation: `floaty ${dur} ease-in-out ${delay} infinite`,
+          }}
+        />
+      ))}
+      <div className="absolute inset-x-0 top-0 h-40 bg-[radial-gradient(ellipse_at_top,_var(--accent-soft)_0%,_transparent_70%)] opacity-40" />
+      <div className="absolute inset-x-0 bottom-0 h-48 bg-[radial-gradient(ellipse_at_bottom,_var(--accent-soft)_0%,_transparent_70%)] opacity-30" />
+    </div>
   );
 }
