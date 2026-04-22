@@ -14,3 +14,26 @@ export type ChatResponse = {
   choices: string[];
   allowFreeText?: boolean;
 };
+
+export type Turn = {
+  question: string;
+  choices: string[];
+  allowFreeText: boolean;
+  chosen?: string;
+};
+
+export type GotchaEntry = {
+  turnIndex: number;
+  timestamp: number;
+  question: string;
+  chosen: string;
+  freeText: boolean;
+};
+
+export type StoredSession = {
+  version: 1;
+  sessionId: string;
+  messages: TurnMessage[];
+  turns: Turn[];
+  gotchaLog: GotchaEntry[];
+};

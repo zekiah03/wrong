@@ -1,7 +1,19 @@
 "use client";
 
-import { useState } from "react";
-import type { ChatResponse, TurnMessage } from "@/lib/types";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type {
+  ChatResponse,
+  GotchaEntry,
+  StoredSession,
+  Turn,
+  TurnMessage,
+} from "@/lib/types";
+import {
+  clearSession,
+  loadSession,
+  newSessionId,
+  saveSession,
+} from "@/lib/storage";
 
 const OPENING_QUESTION = "あなたは今、自分に意識があると思っていますか?";
 const OPENING_CHOICES = [
@@ -10,56 +22,105 @@ const OPENING_CHOICES = [
   "わからない",
 ];
 
-type Turn = {
-  question: string;
-  choices: string[];
-  allowFreeText: boolean;
-  chosen?: string;
-};
+function initialTurn(): Turn {
+  return {
+    question: OPENING_QUESTION,
+    choices: OPENING_CHOICES,
+    allowFreeText: false,
+  };
+}
 
 export default function Page() {
+  const [sessionId, setSessionId] = useState<string>("");
   const [history, setHistory] = useState<TurnMessage[]>([]);
-  const [turns, setTurns] = useState<Turn[]>([
-    {
-      question: OPENING_QUESTION,
-      choices: OPENING_CHOICES,
-      allowFreeText: false,
-    },
-  ]);
+  const [turns, setTurns] = useState<Turn[]>([initialTurn()]);
+  const [gotchaLog, setGotchaLog] = useState<GotchaEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hydrated, setHydrated] = useState(false);
+  const bottomRef = useRef<HTMLDivElement | null>(null);
 
-  async function submit(choice: string) {
+  // Hydrate from localStorage on mount
+  useEffect(() => {
+    const stored = loadSession();
+    if (stored) {
+      setSessionId(stored.sessionId);
+      setHistory(stored.messages);
+      setTurns(stored.turns.length > 0 ? stored.turns : [initialTurn()]);
+      setGotchaLog(stored.gotchaLog ?? []);
+    } else {
+      setSessionId(newSessionId());
+    }
+    setHydrated(true);
+  }, []);
+
+  // Persist on change
+  useEffect(() => {
+    if (!hydrated || !sessionId) return;
+    const session: StoredSession = {
+      version: 1,
+      sessionId,
+      messages: history,
+      turns,
+      gotchaLog,
+    };
+    saveSession(session);
+  }, [hydrated, sessionId, history, turns, gotchaLog]);
+
+  // Scroll to bottom on new turn
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [turns.length, loading]);
+
+  const handleReset = useCallback(() => {
+    if (!confirm("この対話を消去します。よろしいですか?")) return;
+    clearSession();
+    setSessionId(newSessionId());
+    setHistory([]);
+    setTurns([initialTurn()]);
+    setGotchaLog([]);
+    setError(null);
+  }, []);
+
+  async function submit(choice: string, freeText = false) {
+    if (loading) return;
     setError(null);
     setLoading(true);
 
+    const currentIdx = turns.length - 1;
+    const currentQuestion = turns[currentIdx].question;
+
+    const entry: GotchaEntry = {
+      turnIndex: currentIdx,
+      timestamp: Date.now(),
+      question: currentQuestion,
+      chosen: choice,
+      freeText,
+    };
+
     const nextHistory: TurnMessage[] = [
       ...history,
-      { role: "user", content: choice },
+      {
+        role: "user",
+        content:
+          history.length === 0
+            ? `問い: ${currentQuestion}\n選択: ${choice}`
+            : choice,
+      },
     ];
 
-    // mark the current turn's choice locally
     setTurns((prev) => {
       const copy = [...prev];
       copy[copy.length - 1] = { ...copy[copy.length - 1], chosen: choice };
       return copy;
     });
+    setGotchaLog((prev) => [...prev, entry]);
 
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          messages:
-            nextHistory.length === 1
-              ? [
-                  {
-                    role: "user",
-                    content: `問い: ${OPENING_QUESTION}\n選択: ${choice}`,
-                  },
-                ]
-              : nextHistory,
-        }),
+        body: JSON.stringify({ messages: nextHistory }),
       });
 
       if (!res.ok) {
@@ -73,7 +134,6 @@ export default function Page() {
         ...nextHistory,
         { role: "assistant", content: data.reply },
       ]);
-
       setTurns((prev) => [
         ...prev,
         {
@@ -94,10 +154,17 @@ export default function Page() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-2xl flex-col px-6 py-12">
-      <header className="mb-12">
+      <header className="mb-12 flex items-center justify-between">
         <h1 className="font-mono text-sm tracking-[0.3em] text-[color:var(--muted)]">
           戯義偽欺着魏
         </h1>
+        <button
+          type="button"
+          onClick={handleReset}
+          className="font-mono text-[10px] tracking-widest text-[color:var(--muted)] transition hover:text-[color:var(--accent)]"
+        >
+          RESET
+        </button>
       </header>
 
       <section className="flex flex-1 flex-col gap-10">
@@ -129,7 +196,7 @@ export default function Page() {
           <div className="mt-8 flex flex-col gap-3">
             {current.choices.map((c, i) => (
               <button
-                key={i}
+                key={`${turns.length}-${i}`}
                 type="button"
                 onClick={() => submit(c)}
                 disabled={loading}
@@ -138,6 +205,9 @@ export default function Page() {
                 {c}
               </button>
             ))}
+            {current.allowFreeText ? (
+              <FreeTextInput disabled={loading} onSubmit={(t) => submit(t, true)} />
+            ) : null}
           </div>
 
           {loading ? (
@@ -149,11 +219,50 @@ export default function Page() {
             <p className="mt-6 text-xs text-red-500">エラー: {error}</p>
           ) : null}
         </div>
+        <div ref={bottomRef} />
       </section>
 
       <footer className="mt-12 text-[10px] tracking-widest text-[color:var(--muted)]">
-        Phase 2 · API connected
+        Phase 3 · persisted
       </footer>
     </main>
+  );
+}
+
+function FreeTextInput({
+  disabled,
+  onSubmit,
+}: {
+  disabled: boolean;
+  onSubmit: (text: string) => void;
+}) {
+  const [text, setText] = useState("");
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        const trimmed = text.trim();
+        if (!trimmed) return;
+        onSubmit(trimmed);
+        setText("");
+      }}
+      className="mt-2 flex gap-2"
+    >
+      <input
+        type="text"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        disabled={disabled}
+        placeholder="自分の言葉で答える"
+        className="flex-1 border border-[color:var(--border)] bg-transparent px-4 py-3 text-sm outline-none transition focus:border-[color:var(--accent)] disabled:opacity-50"
+      />
+      <button
+        type="submit"
+        disabled={disabled}
+        className="border border-[color:var(--border)] px-4 py-3 text-xs tracking-widest transition hover:border-[color:var(--accent)] disabled:opacity-50"
+      >
+        SEND
+      </button>
+    </form>
   );
 }
