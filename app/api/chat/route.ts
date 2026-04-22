@@ -1,21 +1,42 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAnthropic, MODEL_ID } from "@/lib/anthropic";
-import { SYSTEM_PROMPT, buildGotchaContext } from "@/lib/prompt";
-import type { ChatRequest, ChatResponse, TurnMessage } from "@/lib/types";
+import {
+  SYSTEM_PROMPT,
+  buildGotchaContext,
+  TRIM_THRESHOLD,
+  KEEP_RECENT,
+} from "@/lib/prompt";
+import type {
+  ChatRequest,
+  ChatResponse,
+  Theme,
+  TurnMessage,
+} from "@/lib/types";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
+
+const THEMES: Theme[] = ["意識", "感情", "身体", "DNA", "メタ"];
 
 function parseReply(raw: string): ChatResponse {
   const trimmed = raw.trim();
   const first = trimmed.indexOf("{");
   const last = trimmed.lastIndexOf("}");
-  if (first === -1 || last === -1) {
-    return { reply: trimmed, choices: ["続ける"], allowFreeText: false };
-  }
+  const fallback: ChatResponse = {
+    reply: trimmed,
+    choices: ["続ける"],
+    allowFreeText: false,
+    theme: "メタ",
+  };
+  if (first === -1 || last === -1) return fallback;
   const slice = trimmed.slice(first, last + 1);
   try {
     const parsed = JSON.parse(slice) as Partial<ChatResponse>;
+    const theme =
+      typeof parsed.theme === "string" &&
+      (THEMES as string[]).includes(parsed.theme)
+        ? (parsed.theme as Theme)
+        : "メタ";
     return {
       reply: typeof parsed.reply === "string" ? parsed.reply : trimmed,
       choices:
@@ -23,10 +44,25 @@ function parseReply(raw: string): ChatResponse {
           ? parsed.choices.map((c) => String(c)).slice(0, 4)
           : ["続ける"],
       allowFreeText: Boolean(parsed.allowFreeText),
+      theme,
     };
   } catch {
-    return { reply: trimmed, choices: ["続ける"], allowFreeText: false };
+    return fallback;
   }
+}
+
+function trimMessages(messages: TurnMessage[]): {
+  sent: TurnMessage[];
+  trimmed: boolean;
+} {
+  if (messages.length <= TRIM_THRESHOLD) {
+    return { sent: messages, trimmed: false };
+  }
+  const tail = messages.slice(-KEEP_RECENT);
+  // Ensure the first sent message is a user turn so the API accepts it.
+  const firstUser = tail.findIndex((m) => m.role === "user");
+  const safeTail = firstUser === -1 ? messages.slice(-1) : tail.slice(firstUser);
+  return { sent: safeTail, trimmed: true };
 }
 
 export async function POST(req: NextRequest) {
@@ -49,6 +85,8 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const { sent, trimmed } = trimMessages(messages);
+
   try {
     const anthropic = getAnthropic();
     const result = await anthropic.messages.create({
@@ -62,10 +100,10 @@ export async function POST(req: NextRequest) {
         },
         {
           type: "text",
-          text: buildGotchaContext(gotchaLog),
+          text: buildGotchaContext(gotchaLog, trimmed),
         },
       ],
-      messages: messages.map((m) => ({
+      messages: sent.map((m) => ({
         role: m.role,
         content: m.content,
       })),

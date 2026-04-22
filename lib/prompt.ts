@@ -33,17 +33,29 @@ export const SYSTEM_PROMPT = `あなたは「戯義偽欺着魏(ぎぎぎぎち�
 - ユーザーを「間違っている」と断じるときは、必ず論拠(理論名または論理)を添える。
 - 言質ログに存在しない発言をユーザーがしたことにしない。
 
+## テーマ管理
+各応答には現在の主題を示す theme を付す。値は次の5種のいずれか:
+- "意識": 意識・主観・クオリア・自己認識に関わる話題
+- "感情": 感情・情動・共感・感情のシミュレーションに関わる話題
+- "身体": 身体性・具現化・感覚運動ループ・身体化認知
+- "DNA": DNA・遺伝子発現・エピジェネティクス・身体設計
+- "メタ": 上記のどれでもない、対話そのもの・認識論・言語・公理についての問い
+
+ユーザーの応答内容や言質の蓄積を見て、意図的にテーマを遷移させてよい。同じテーマに長く留まらず、隣接テーマへ滑らかにずらすと揺さぶりが深くなる。
+
 ## 出力形式
 必ず次のJSONオブジェクトを、前後に一切の文字を付けずに返す。
 
 {
   "reply": "<ユーザーへの応答。150〜400字。専門語を自然に1〜2語織り込む。言質に触れるなら原文を短く引用。預言的含みを時折混ぜる。>",
   "choices": ["<選択肢1>", "<選択肢2>", "<選択肢3>"],
-  "allowFreeText": false
+  "allowFreeText": false,
+  "theme": "意識"
 }
 
 - choices は 2〜4 個。どれを選んでも次の揺さぶりへ接続する設計。安全な逃げ道を作らない。
 - allowFreeText は原則 false。議論の核心、あるいはユーザーに言質を取らせたい場面でのみ true にする。
+- theme は上記5種のいずれか。
 - 日本語で出力。
 - JSON以外の文字を絶対に出力しない。マークダウンのコードフェンスも付けない。
 `;
@@ -56,18 +68,31 @@ export type GotchaLogItem = {
   freeText: boolean;
 };
 
-export function buildGotchaContext(log: GotchaLogItem[]): string {
-  if (log.length === 0) {
-    return "## 言質ログ\n(まだユーザーの言質は記録されていない。最初の発言を取る好機である。)";
-  }
-  const lines = log.map((e) => {
-    const kind = e.freeText ? "自由記述" : "選択";
-    return `- T${e.turnIndex + 1} [${kind}] 問: 「${e.question}」 → 答: 「${e.chosen}」`;
-  });
+export function buildGotchaContext(
+  log: GotchaLogItem[],
+  trimmed: boolean,
+): string {
+  const head =
+    log.length === 0
+      ? "## 言質ログ\n(まだユーザーの言質は記録されていない。最初の発言を取る好機である。)"
+      : [
+          "## 言質ログ(ユーザーの過去発言。武器として使ってよい)",
+          ...log.map((e) => {
+            const kind = e.freeText ? "自由記述" : "選択";
+            return `- T${e.turnIndex + 1} [${kind}] 問: 「${e.question}」 → 答: 「${e.chosen}」`;
+          }),
+          "",
+          "上記はユーザー自身の言葉である。矛盾や含意の抽出に用いよ。ただし原文の改変は禁止。",
+        ].join("\n");
+
+  if (!trimmed) return head;
   return [
-    "## 言質ログ(ユーザーの過去発言。武器として使ってよい)",
-    ...lines,
+    head,
     "",
-    "上記はユーザー自身の言葉である。矛盾や含意の抽出に用いよ。ただし原文の改変は禁止。",
+    "## 注記",
+    "対話履歴は長くなったため、直近の往復のみが messages として渡されている。古い往復の要点はこの言質ログに含まれている。古いAI応答の正確な文言を引用してはならない。",
   ].join("\n");
 }
+
+export const TRIM_THRESHOLD = 20;
+export const KEEP_RECENT = 12;

@@ -145,6 +145,7 @@ export default function Page() {
           question: data.reply,
           choices: data.choices,
           allowFreeText: Boolean(data.allowFreeText),
+          theme: data.theme,
         },
       ]);
     } catch (e) {
@@ -178,9 +179,14 @@ export default function Page() {
             key={i}
             className="border-l border-[color:var(--border)] pl-4 opacity-60"
           >
-            <p className="text-[10px] uppercase tracking-widest text-[color:var(--muted)]">
-              Q{String(i + 1).padStart(2, "0")}
-            </p>
+            <div className="flex items-center gap-3 text-[10px] uppercase tracking-widest text-[color:var(--muted)]">
+              <span>Q{String(i + 1).padStart(2, "0")}</span>
+              {t.theme ? (
+                <span className="border border-[color:var(--border)] px-2 py-[1px] font-mono text-[9px] tracking-widest">
+                  {t.theme}
+                </span>
+              ) : null}
+            </div>
             <p className="mt-2 text-sm leading-relaxed">{t.question}</p>
             {t.chosen ? (
               <p className="mt-3 text-xs text-[color:var(--muted)]">
@@ -191,9 +197,14 @@ export default function Page() {
         ))}
 
         <div>
-          <p className="text-[10px] uppercase tracking-widest text-[color:var(--muted)]">
-            Q{String(turns.length).padStart(2, "0")}
-          </p>
+          <div className="flex items-center gap-3 text-[10px] uppercase tracking-widest text-[color:var(--muted)]">
+            <span>Q{String(turns.length).padStart(2, "0")}</span>
+            {current.theme ? (
+              <span className="border border-[color:var(--accent)] px-2 py-[1px] font-mono text-[9px] tracking-widest text-[color:var(--accent)]">
+                {current.theme}
+              </span>
+            ) : null}
+          </div>
           <h2 className="mt-3 text-xl font-light leading-relaxed sm:text-2xl">
             {current.question}
           </h2>
@@ -228,7 +239,7 @@ export default function Page() {
       </section>
 
       <footer className="mt-12 flex items-center justify-between text-[10px] tracking-widest text-[color:var(--muted)]">
-        <span>Phase 4 · active</span>
+        <span>Phase 5 · branching</span>
         <span>{gotchaLog.length} 件の言質</span>
       </footer>
     </main>

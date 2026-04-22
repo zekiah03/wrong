@@ -10,10 +10,13 @@ export type ChatRequest = {
   gotchaLog?: GotchaEntry[];
 };
 
+export type Theme = "意識" | "感情" | "身体" | "DNA" | "メタ";
+
 export type ChatResponse = {
   reply: string;
   choices: string[];
   allowFreeText?: boolean;
+  theme?: Theme;
 };
 
 export type Turn = {
@@ -21,6 +24,7 @@ export type Turn = {
   choices: string[];
   allowFreeText: boolean;
   chosen?: string;
+  theme?: Theme;
 };
 
 export type GotchaEntry = {
