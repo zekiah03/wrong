@@ -903,13 +903,16 @@ function IntroModal({ onStart }: { onStart: () => void }) {
 
 /* ─── 結果モーダル ─── */
 
-function pickFarewell(score: number, isNewHigh: boolean): string {
-  if (isNewHigh) return "……しんきろく、じゃん。ふーん、やるじゃん。";
-  if (score <= 2) return "えっ、もう帰っちゃうの？はやっ。";
-  if (score <= 5) return "もう帰っちゃうの？へぇー。";
-  if (score <= 15) return "ちょっとはあそんでくれたんだ。へぇ。";
-  if (score <= 30) return "けっこうねばったじゃん。ふーん。";
-  return "ここまでねばるって、ちょっとすごいね。";
+function pickFarewell(): string {
+  const options = [
+    "えっ、もう帰っちゃうの？……やだ。もうちょっといてよ。",
+    "はぁ？もう帰るの。……べつに。ひきとめないけどさぁ。",
+    "……そっか。もう帰るんだ。ふーん、そっか。",
+    "ちぇっ。もうちょっといてくれても、いいじゃん。",
+    "まだ帰らないでよ。ね？ちょっとだけ。ちょっとだけだから。",
+    "……ねぇ。いかないで、っていったら、いかない？",
+  ];
+  return options[Math.floor(Math.random() * options.length)];
 }
 
 function ResultModal({
@@ -940,7 +943,7 @@ function ResultModal({
     };
   }, [onReplay]);
 
-  const farewell = pickFarewell(score, isNewHigh);
+  const farewell = pickFarewell();
 
   return (
     <div
