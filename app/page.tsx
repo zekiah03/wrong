@@ -68,11 +68,7 @@ export default function Page() {
     gamesPlayed: 0,
     lastScore: 0,
   });
-  const [result, setResult] = useState<{
-    score: number;
-    isNewHigh: boolean;
-    prevHigh: number;
-  } | null>(null);
+  const [result, setResult] = useState<{ score: number } | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -128,7 +124,6 @@ export default function Page() {
       return;
     }
     const prevHigh = highScore.highScore;
-    const isNewHigh = score > prevHigh;
     const next: HighScoreBlob = {
       version: 1,
       highScore: Math.max(prevHigh, score),
@@ -137,7 +132,7 @@ export default function Page() {
     };
     saveHighScore(next);
     setHighScore(next);
-    setResult({ score, isNewHigh, prevHigh });
+    setResult({ score });
   }, [gotchaLog.length, highScore, resetToFresh]);
 
   const handleReplay = useCallback(() => {
@@ -328,8 +323,6 @@ export default function Page() {
       {result ? (
         <ResultModal
           score={result.score}
-          isNewHigh={result.isNewHigh}
-          prevHigh={result.prevHigh}
           highScore={highScore.highScore}
           gamesPlayed={highScore.gamesPlayed}
           onReplay={handleReplay}
@@ -917,15 +910,11 @@ function pickFarewell(): string {
 
 function ResultModal({
   score,
-  isNewHigh,
-  prevHigh,
   highScore,
   gamesPlayed,
   onReplay,
 }: {
   score: number;
-  isNewHigh: boolean;
-  prevHigh: number;
   highScore: number;
   gamesPlayed: number;
   onReplay: () => void;
@@ -981,15 +970,9 @@ function ResultModal({
               </span>
             </p>
           </div>
-          <div
-            className={`rounded-squish border p-4 ${
-              isNewHigh
-                ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)]/70"
-                : "border-[color:var(--border)] bg-[color:var(--surface)]"
-            }`}
-          >
+          <div className="rounded-squish border border-[color:var(--border)] bg-[color:var(--surface)] p-4">
             <p className="font-mono text-[9px] tracking-[0.25em] text-[color:var(--subtle)]">
-              {isNewHigh ? "しんきろく！" : "ハイスコア"}
+              ハイスコア
             </p>
             <p className="mt-1 inline-flex items-baseline gap-1 text-[color:var(--accent)]">
               <IconMedal className="h-4 w-4" />
@@ -997,11 +980,6 @@ function ResultModal({
                 {highScore}
               </span>
             </p>
-            {isNewHigh && prevHigh > 0 ? (
-              <p className="mt-1 font-mono text-[9px] tracking-[0.15em] text-[color:var(--subtle)]">
-                まえは {prevHigh}
-              </p>
-            ) : null}
           </div>
         </div>
 
