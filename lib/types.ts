@@ -46,3 +46,10 @@ export type StoredSession = {
   turns: Turn[];
   gotchaLog: GotchaEntry[];
 };
+
+export type HighScoreBlob = {
+  version: 1;
+  highScore: number;
+  gamesPlayed: number;
+  lastScore: number;
+};

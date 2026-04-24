@@ -4,6 +4,7 @@ import type { CSSProperties, FC } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   GotchaEntry,
+  HighScoreBlob,
   StoredSession,
   Theme,
   Turn,
@@ -11,8 +12,10 @@ import type {
 } from "@/lib/types";
 import {
   clearSession,
+  loadHighScore,
   loadSession,
   newSessionId,
+  saveHighScore,
   saveSession,
 } from "@/lib/storage";
 
@@ -59,6 +62,17 @@ export default function Page() {
   const [error, setError] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [showIntro, setShowIntro] = useState(false);
+  const [highScore, setHighScore] = useState<HighScoreBlob>({
+    version: 1,
+    highScore: 0,
+    gamesPlayed: 0,
+    lastScore: 0,
+  });
+  const [result, setResult] = useState<{
+    score: number;
+    isNewHigh: boolean;
+    prevHigh: number;
+  } | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -72,6 +86,7 @@ export default function Page() {
       setSessionId(newSessionId());
       setShowIntro(true);
     }
+    setHighScore(loadHighScore());
     setHydrated(true);
   }, []);
 
@@ -91,8 +106,7 @@ export default function Page() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [turns.length, streamingReply, streamingHeadline, loading]);
 
-  const handleReset = useCallback(() => {
-    if (!confirm("このおしゃべり、ぜんぶ消しちゃう？")) return;
+  const resetToFresh = useCallback(() => {
     clearSession();
     setSessionId(newSessionId());
     setHistory([]);
@@ -101,8 +115,36 @@ export default function Page() {
     setStreamingHeadline("");
     setStreamingReply("");
     setError(null);
-    setShowIntro(true);
   }, []);
+
+  const handleQuit = useCallback(() => {
+    const score = gotchaLog.length;
+    if (score === 0) {
+      if (!confirm("まだなんにも喋ってないよ？スコアつかないけどほんとに帰る？")) {
+        return;
+      }
+      resetToFresh();
+      setShowIntro(true);
+      return;
+    }
+    const prevHigh = highScore.highScore;
+    const isNewHigh = score > prevHigh;
+    const next: HighScoreBlob = {
+      version: 1,
+      highScore: Math.max(prevHigh, score),
+      gamesPlayed: highScore.gamesPlayed + 1,
+      lastScore: score,
+    };
+    saveHighScore(next);
+    setHighScore(next);
+    setResult({ score, isNewHigh, prevHigh });
+  }, [gotchaLog.length, highScore, resetToFresh]);
+
+  const handleReplay = useCallback(() => {
+    resetToFresh();
+    setResult(null);
+    setShowIntro(true);
+  }, [resetToFresh]);
 
   async function submit(choice: string, freeText = false) {
     if (loading) return;
@@ -273,16 +315,26 @@ export default function Page() {
           </button>
           <button
             type="button"
-            onClick={handleReset}
+            onClick={handleQuit}
             className="group flex items-center gap-1.5 rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] px-3 py-1 font-mono text-[10px] tracking-[0.2em] text-[color:var(--muted)] transition hover:-translate-y-[1px] hover:border-[color:var(--accent)] hover:text-[color:var(--accent)] hover:shadow-soft active:scale-95"
           >
-            <IconRefresh className="h-3 w-3 transition group-hover:rotate-[-90deg]" />
-            RESET
+            <IconDoor className="h-3 w-3 transition group-hover:translate-x-[1px]" />
+            あきらめる
           </button>
         </div>
       </header>
 
       {showIntro ? <IntroModal onStart={() => setShowIntro(false)} /> : null}
+      {result ? (
+        <ResultModal
+          score={result.score}
+          isNewHigh={result.isNewHigh}
+          prevHigh={result.prevHigh}
+          highScore={highScore.highScore}
+          gamesPlayed={highScore.gamesPlayed}
+          onReplay={handleReplay}
+        />
+      ) : null}
 
       <section className="relative z-10 flex flex-1 flex-col gap-12">
         {past.map((t, i) => {
@@ -378,11 +430,11 @@ export default function Page() {
       <footer className="relative z-10 mt-16 flex items-center justify-between font-mono text-[10px] tracking-[0.25em] text-[color:var(--subtle)]">
         <span className="inline-flex items-center gap-1.5">
           <IconStar className="h-3 w-3 text-[color:var(--accent)]" />
-          {turns.length} もんめ
+          スコア {gotchaLog.length}
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <IconHeart className="h-3 w-3 text-[color:var(--accent)]" />
-          {gotchaLog.length} こ言質ゲット
+          <IconMedal className="h-3 w-3 text-[color:var(--accent)]" />
+          ハイスコア {highScore.highScore}
         </span>
       </footer>
     </main>
@@ -658,6 +710,48 @@ function IconInfo({ className }: { className?: string }) {
   );
 }
 
+function IconDoor({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 16 16" aria-hidden className={className}>
+      <rect
+        x="3.5"
+        y="2.5"
+        width="7"
+        height="11"
+        rx="1"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        fill="none"
+      />
+      <circle cx="8.6" cy="8" r="0.8" fill="currentColor" />
+      <path
+        d="M11.5 8 H15 M13 5.5 L15 8 L13 10.5"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+    </svg>
+  );
+}
+
+function IconMedal({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 16 16" aria-hidden className={className}>
+      <path
+        d="M4 1.5 L6 6 M12 1.5 L10 6"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+        fill="none"
+      />
+      <circle cx="8" cy="10" r="4.2" fill="currentColor" />
+      <circle cx="8" cy="10" r="2" fill="var(--surface)" />
+    </svg>
+  );
+}
+
 function IconCross({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 10 10" aria-hidden className={className}>
@@ -775,12 +869,19 @@ function IntroModal({ onStart }: { onStart: () => void }) {
 
         <div className="mt-6 space-y-3 text-[15px] leading-[1.9] text-[color:var(--foreground)]">
           <p>
-            ぎぃちゃんっていう、ちいさい
+            親戚の家で、ぎぃちゃんっていう
             <span className="font-semibold text-[color:var(--accent)]">クソガキ</span>
-            がいる。
+            の子守をたのまれた。
           </p>
-          <p>きみに話しかけたがってるよ。</p>
-          <p className="text-[color:var(--muted)]">しばらく、相手してあげて。</p>
+          <p>しばらく、相手してあげて。</p>
+          <p className="text-[color:var(--muted)]">
+            きつくなったら、右上の
+            <span className="mx-1 inline-flex items-center gap-1 rounded-full border border-[color:var(--border)] px-1.5 py-[1px] font-mono text-[10px] tracking-[0.1em] align-middle">
+              <IconDoor className="h-2.5 w-2.5" />
+              あきらめる
+            </span>
+            で帰っていいよ。
+          </p>
         </div>
 
         <button
@@ -795,6 +896,124 @@ function IntroModal({ onStart }: { onStart: () => void }) {
         <p className="mt-3 text-center font-mono text-[10px] tracking-[0.2em] text-[color:var(--subtle)]">
           esc / 背景クリックでも閉じる
         </p>
+      </div>
+    </div>
+  );
+}
+
+/* ─── 結果モーダル ─── */
+
+function pickFarewell(score: number, isNewHigh: boolean): string {
+  if (isNewHigh) return "……しんきろく、じゃん。ふーん、やるじゃん。";
+  if (score <= 2) return "えっ、もう帰っちゃうの？はやっ。";
+  if (score <= 5) return "もう帰っちゃうの？へぇー。";
+  if (score <= 15) return "ちょっとはあそんでくれたんだ。へぇ。";
+  if (score <= 30) return "けっこうねばったじゃん。ふーん。";
+  return "ここまでねばるって、ちょっとすごいね。";
+}
+
+function ResultModal({
+  score,
+  isNewHigh,
+  prevHigh,
+  highScore,
+  gamesPlayed,
+  onReplay,
+}: {
+  score: number;
+  isNewHigh: boolean;
+  prevHigh: number;
+  highScore: number;
+  gamesPlayed: number;
+  onReplay: () => void;
+}) {
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onReplay();
+    };
+    window.addEventListener("keydown", onEsc);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onEsc);
+    };
+  }, [onReplay]);
+
+  const farewell = pickFarewell(score, isNewHigh);
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="result-title"
+      className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6 [animation:fadeIn_.25s_ease-out]"
+    >
+      <button
+        type="button"
+        aria-label="もういちど子守する"
+        onClick={onReplay}
+        className="absolute inset-0 bg-[color:var(--background)]/75 backdrop-blur-sm"
+      />
+      <div className="relative z-10 w-full max-w-md rounded-squish border border-[color:var(--border)] bg-[color:var(--surface)] p-6 shadow-[0_24px_60px_-24px_rgba(255,122,182,0.55)] [animation:popIn_.45s_cubic-bezier(.2,.9,.3,1.2)] sm:p-8">
+        <p className="font-mono text-[10px] tracking-[0.3em] text-[color:var(--subtle)]">
+          おつかれさま
+        </p>
+        <h2
+          id="result-title"
+          className="mt-2 text-[22px] font-semibold leading-[1.55] text-[color:var(--foreground)] sm:text-[24px]"
+        >
+          {farewell}
+        </h2>
+
+        <div className="mt-6 grid grid-cols-2 gap-3">
+          <div className="rounded-squish border border-[color:var(--border)] bg-[color:var(--accent-soft)]/40 p-4">
+            <p className="font-mono text-[9px] tracking-[0.25em] text-[color:var(--subtle)]">
+              きょうのスコア
+            </p>
+            <p className="mt-1 inline-flex items-baseline gap-1 text-[color:var(--accent)]">
+              <IconStar className="h-4 w-4" />
+              <span className="text-[30px] font-semibold leading-none tracking-tight">
+                {score}
+              </span>
+            </p>
+          </div>
+          <div
+            className={`rounded-squish border p-4 ${
+              isNewHigh
+                ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)]/70"
+                : "border-[color:var(--border)] bg-[color:var(--surface)]"
+            }`}
+          >
+            <p className="font-mono text-[9px] tracking-[0.25em] text-[color:var(--subtle)]">
+              {isNewHigh ? "しんきろく！" : "ハイスコア"}
+            </p>
+            <p className="mt-1 inline-flex items-baseline gap-1 text-[color:var(--accent)]">
+              <IconMedal className="h-4 w-4" />
+              <span className="text-[30px] font-semibold leading-none tracking-tight">
+                {highScore}
+              </span>
+            </p>
+            {isNewHigh && prevHigh > 0 ? (
+              <p className="mt-1 font-mono text-[9px] tracking-[0.15em] text-[color:var(--subtle)]">
+                まえは {prevHigh}
+              </p>
+            ) : null}
+          </div>
+        </div>
+
+        <p className="mt-4 font-mono text-[10px] tracking-[0.2em] text-[color:var(--subtle)]">
+          {gamesPlayed}かいめの子守
+        </p>
+
+        <button
+          type="button"
+          onClick={onReplay}
+          className="group mt-7 flex w-full items-center justify-center gap-2 rounded-squish border border-[color:var(--accent)] bg-[color:var(--accent)] px-5 py-3.5 text-[15px] font-semibold text-[color:var(--accent-ink)] shadow-soft transition hover:-translate-y-[1px] hover:shadow-[0_14px_28px_-12px_rgba(255,122,182,0.7)] active:scale-[0.98]"
+        >
+          もういちど子守する
+          <IconArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+        </button>
       </div>
     </div>
   );
